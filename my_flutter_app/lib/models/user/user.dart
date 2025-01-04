@@ -15,11 +15,11 @@ class User {
 
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
-      id: map['id'].toString(),
-      email: map['email'],
-      name: map['name'],
-      role: map['role'],
-      department: map['department'],
+      id: map['id'] ?? '',
+      email: map['email'] ?? '',
+      name: map['name'] ?? '',
+      role: map['role'] ?? '',
+      department: map['department'] ?? '',
     );
   }
 

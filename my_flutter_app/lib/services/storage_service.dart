@@ -1,53 +1,64 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:task_master_pro/models/user/user.dart';
+import 'package:get_storage/get_storage.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();
   factory StorageService() => _instance;
   
-  late final SharedPreferences _prefs;
-  
+  final _storage = GetStorage();
+  static const String TOKEN_KEY = 'auth_token';
+  static const String USER_KEY = 'user';
+  static const String AUTO_LOGIN_KEY = 'auto_login';
+
   StorageService._internal();
 
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    await GetStorage.init();
   }
 
   // 토큰 저장
   Future<void> saveToken(String token) async {
-    await _prefs.setString('auth_token', token);
+    print('[DEBUG] Saving token: $token');
+    await _storage.write(TOKEN_KEY, token);
+    print('[DEBUG] Token saved successfully');
   }
 
   // 토큰 가져오기
   String? getToken() {
-    return _prefs.getString('auth_token');
+    final token = _storage.read<String>(TOKEN_KEY);
+    print('[DEBUG] Retrieved token: $token');
+    return token;
   }
 
   // 사용자 정보 저장
   Future<void> saveUser(User user) async {
-    await _prefs.setString('user', jsonEncode(user.toMap()));
+    await _storage.write(USER_KEY, jsonEncode(user.toMap()));
   }
 
   // 사용자 정보 가져오기
   User? getUser() {
-    final userStr = _prefs.getString('user');
+    final userStr = _storage.read<String>(USER_KEY);
     if (userStr == null) return null;
     return User.fromMap(jsonDecode(userStr));
   }
 
   // 로그아웃 (데이터 삭제)
   Future<void> clearAll() async {
-    await _prefs.clear();
+    print('[DEBUG] Clearing all storage');
+    await _storage.erase();
   }
 
   // 자동 로그인 설정 저장
   Future<void> setAutoLogin(bool value) async {
-    await _prefs.setBool('auto_login', value);
+    print('[DEBUG] Setting auto login: $value');
+    await _storage.write(AUTO_LOGIN_KEY, value);
   }
 
   // 자동 로그인 설정 가져오기
   bool getAutoLogin() {
-    return _prefs.getBool('auto_login') ?? false;
+    final autoLogin = _storage.read<bool>(AUTO_LOGIN_KEY) ?? false;
+    print('[DEBUG] Auto login status: $autoLogin');
+    return autoLogin;
   }
 } 

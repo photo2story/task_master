@@ -1,105 +1,74 @@
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:task_master_pro/services/auth_service.dart';
 import 'package:task_master_pro/constants/routes.dart';
 import 'package:task_master_pro/services/storage_service.dart';
+import 'package:task_master_pro/models/user/user.dart';
+import 'package:task_master_pro/services/api_service.dart';
+import 'package:dio/dio.dart';
+import 'package:get_storage/get_storage.dart';
 
 class AuthController extends GetxController {
-  final AuthService _authService = AuthService();
-  final StorageService _storage = StorageService();
-  
-  final RxBool isLoading = false.obs;
   final RxBool isLoggedIn = false.obs;
+  final RxString token = ''.obs;
+  final RxBool isLoading = false.obs;
   final Rx<String?> errorMessage = Rx<String?>(null);
+  final storage = GetStorage();
 
   @override
   void onInit() {
     super.onInit();
-    errorMessage.value = null;  // 초기화 시 에러 메시지 클리어
-    checkAutoLogin();  // 앱 시작 시 자동 로그인 체크
+    checkAutoLogin();
   }
 
-  Future<void> checkAutoLogin() async {
-    if (_storage.getAutoLogin()) {
-      final token = _storage.getToken();
-      if (token != null) {
-        try {
-          // 토큰 유효성 검증
-          final success = await _authService.validateToken(token);
-          if (success) {
-            isLoggedIn.value = true;
-            Get.offAllNamed(Routes.dashboard);
-          }
-        } catch (e) {
-          print('자동 로그인 실패: $e');
-        }
-      }
-    }
-  }
-
-  // 이메일/비밀번호 로그인
   Future<void> signInWithEmail(String email, String password, bool autoLogin) async {
     try {
       isLoading.value = true;
       errorMessage.value = null;
 
-      final response = await _authService.signInWithEmail(email, password);
+      print('[DEBUG] Signing in with email: $email');
+      final response = await ApiService().login(
+        email: email,
+        password: password,
+      );
       
-      if (response.token != null) {
-        // 토큰 저장
-        await _storage.saveToken(response.token!);
-        // 자동 로그인 설정 저장
-        await _storage.setAutoLogin(autoLogin);
-        
-        isLoggedIn.value = true;
+      print('[DEBUG] Login response received: $response');
+      final newToken = response['token'];
+      
+      if (newToken != null) {
+        print('[DEBUG] Token received: $newToken');
+        await setLoginState(newToken);
+        if (autoLogin) {
+          await storage.write('token', newToken);
+        }
         Get.offAllNamed(Routes.dashboard);
       } else {
+        print('[DEBUG] No token received in response');
         errorMessage.value = '로그인에 실패했습니다.';
       }
     } catch (e) {
-      errorMessage.value = e.toString();
+      print('[ERROR] Login failed: $e');
+      errorMessage.value = '로그인에 실패했습니다.';
+      Get.snackbar(
+        '로그인 실패',
+        errorMessage.value!,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[900],
+      );
     } finally {
       isLoading.value = false;
     }
   }
 
-  // Google 로그인
   Future<void> signInWithGoogle() async {
-    isLoading.value = true;
-    errorMessage.value = null;
-
-    try {
-      final success = await _authService.signInWithGoogle();
-      if (success) {
-        isLoggedIn.value = true;
-        Get.offAllNamed(Routes.dashboard);
-      } else {
-        errorMessage.value = 'Google 로그인에 실패했습니다.';
-      }
-    } catch (e) {
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
+    // TODO: Implement Google Sign In
+    throw UnimplementedError();
   }
 
-  // Apple 로그인
   Future<void> signInWithApple() async {
-    isLoading.value = true;
-    errorMessage.value = null;
-
-    try {
-      final success = await _authService.signInWithApple();
-      if (success) {
-        isLoggedIn.value = true;
-        Get.offAllNamed(Routes.dashboard);
-      } else {
-        errorMessage.value = 'Apple 로그인에 실패했습니다.';
-      }
-    } catch (e) {
-      errorMessage.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
+    // TODO: Implement Apple Sign In
+    throw UnimplementedError();
   }
 
   Future<void> register({
@@ -109,11 +78,11 @@ class AuthController extends GetxController {
     required String role,
     required String department,
   }) async {
-    isLoading.value = true;
-    errorMessage.value = null;
-
     try {
-      final user = await _authService.register(
+      isLoading.value = true;
+      errorMessage.value = null;
+      
+      final user = await ApiService().register(
         email: email,
         password: password,
         name: name,
@@ -121,14 +90,13 @@ class AuthController extends GetxController {
         department: department,
       );
       
-      // 회원가입 성공 시 자동 로그인
-      isLoggedIn.value = true;
-      Get.offAllNamed(Routes.dashboard);
       Get.snackbar(
         '성공',
         '회원가입이 완료되었습니다.',
         snackPosition: SnackPosition.BOTTOM,
       );
+      
+      Get.offAllNamed(Routes.login);
     } catch (e) {
       errorMessage.value = e.toString();
       throw e;
@@ -137,14 +105,74 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> checkAutoLogin() async {
+    print('[DEBUG] Checking auto login...');
     try {
-      await _storage.setAutoLogin(false);  // 자동 로그인 해제
-      await _storage.clearAll();  // 저장된 데이터 모두 삭제
+      final savedToken = storage.read('token');
+      if (savedToken != null) {
+        print('[DEBUG] Found saved token: ${savedToken.substring(0, 20)}...');
+        
+        // 토큰 유효성 검사
+        final isValid = await validateToken(savedToken);
+        if (isValid) {
+          print('[DEBUG] Token is valid, proceeding with auto login');
+          await setLoginState(savedToken);
+          return;
+        } else {
+          print('[DEBUG] Token is invalid, clearing saved data');
+          await storage.remove('token');
+        }
+      } else {
+        print('[DEBUG] No saved token found');
+      }
+      
+      print('[DEBUG] Auto login is disabled');
       isLoggedIn.value = false;
-      Get.offAllNamed(Routes.login);
+      token.value = '';
+      
     } catch (e) {
-      errorMessage.value = e.toString();
+      print('[ERROR] Auto login error: $e');
+      isLoggedIn.value = false;
+      token.value = '';
     }
+  }
+
+  Future<bool> validateToken(String token) async {
+    try {
+      print('[DEBUG] Validating token...');
+      final response = await ApiService().request(
+        method: 'GET',
+        path: '/auth/validate',
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      print('[DEBUG] Token validation successful');
+      return true;
+    } catch (e) {
+      print('[DEBUG] Token validation failed: $e');
+      return false;
+    }
+  }
+
+  Future<void> setLoginState(String newToken) async {
+    print('[DEBUG] Setting login state with token: ${newToken.substring(0, 20)}...');
+    token.value = newToken;
+    isLoggedIn.value = true;
+    await storage.write('token', newToken);
+    print('[DEBUG] Login state set successfully');
+  }
+
+  Future<void> logout() async {
+    print('[DEBUG] Logging out...');
+    token.value = '';
+    isLoggedIn.value = false;
+    await storage.remove('token');
+    Get.offAllNamed(Routes.login);
+    print('[DEBUG] Logout completed');
+  }
+
+  Future<void> signOut() async {
+    await logout();  // 기존 logout 메서드 사용
   }
 } 

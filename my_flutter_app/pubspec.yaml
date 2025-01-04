@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   get: ^4.6.5
+  get_storage: ^2.1.1
   google_fonts: ^4.0.0
   shared_preferences: ^2.2.0
   flutter_slidable: ^3.0.1
@@ -24,6 +25,7 @@ dependencies:
   sign_in_with_apple: ^5.0.0
   dio: ^5.7.0
   csv: ^5.0.2
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:

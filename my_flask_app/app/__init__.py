@@ -1,37 +1,29 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
-from flask_bcrypt import Bcrypt
-from flask_migrate import Migrate
 from flask_cors import CORS
-from app.config import Config
-
-db = SQLAlchemy()
-jwt = JWTManager()
-bcrypt = Bcrypt()
-migrate = Migrate()
+from .routes.auth_routes import auth_bp
+from .routes.project_routes import project_bp
+import datetime
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(Config)
-
+    
+    # CORS 설정
     CORS(app, resources={
         r"/*": {
             "origins": "*",
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
+            "allow_headers": ["Content-Type", "Authorization"]
         }
     })
-
-    db.init_app(app)
-    jwt.init_app(app)
-    bcrypt.init_app(app)
-    migrate.init_app(app, db)
-
-    from app.routes.auth import auth
-    app.register_blueprint(auth, url_prefix='/api/auth')
-
-    with app.app_context():
-        db.create_all()
-
+    
+    # JWT 설정
+    app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # 실제 운영에서는 환경변수로 관리
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
+    jwt = JWTManager(app)
+    
+    # 블루프린트 등록
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(project_bp, url_prefix='/api/projects')
+    
     return app

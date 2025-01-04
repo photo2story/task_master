@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:task_master_pro/models/project/project.dart';
 import 'package:csv/csv.dart';
 
@@ -6,50 +7,64 @@ class ProjectController extends GetxController {
   final RxList<Project> projects = <Project>[].obs;
 
   void importFromCsv(String csvData) {
+    print('[DEBUG] ===== Starting CSV Parsing =====');
     try {
-      print('CSV 데이터 받음: ${csvData.substring(0, 100)}...'); // 첫 100자만 출력
-      
-      final List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
-      print('CSV 행 수: ${rows.length}');
-      
-      // 헤더 행 가져오기
-      final headers = rows[0].map((e) => e.toString()).toList();
-      print('헤더: $headers');
-      
-      // 데이터 행 처리
-      projects.clear();
-      for (var i = 1; i < rows.length; i++) {
-        final row = rows[i];
-        print('행 $i: $row');
-        
-        final data = Map<String, dynamic>.fromIterables(
-          headers, 
-          row.map((e) => e.toString())
-        );
-        print('데이터 맵: $data');
-        
-        final project = Project.fromCsv(data);
-        print('생성된 프로젝트: ${project.toMap()}');
-        
-        projects.add(project);
-      }
+      print('[DEBUG] CSV data received. Length: ${csvData.length}');
+      print('[DEBUG] First line of CSV:');
+      print(csvData.split('\n').first);
 
-      print('총 ${projects.length}개의 프로젝트 로드됨');
+      // Parse CSV data
+      List<List<dynamic>> rowsAsListOfValues = 
+        const CsvToListConverter().convert(csvData);
       
-      Get.snackbar(
-        '성공',
-        '${projects.length}개의 프로젝트를 불러왔습니다.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } catch (e, stackTrace) {
-      print('CSV 처리 중 오류 발생:');
-      print('에러: $e');
-      print('스택트레이스: $stackTrace');
+      print('[DEBUG] CSV parsed into ${rowsAsListOfValues.length} rows');
+      print('[DEBUG] Headers: ${rowsAsListOfValues[0]}');
       
+      if (rowsAsListOfValues.length > 1) {
+        List<List<dynamic>> dataRows = rowsAsListOfValues.sublist(1);
+        print('[DEBUG] Data rows count: ${dataRows.length}');
+        
+        // Clear existing projects
+        projects.clear();
+        print('[DEBUG] Cleared existing projects');
+        
+        // Convert CSV data to Project objects
+        for (var row in dataRows) {
+          try {
+            print('[DEBUG] Processing row: $row');
+            if (row.length >= 7) {
+              Project project = Project(
+                category: row[0].toString(),
+                classification: row[1].toString(),
+                detail: row[2].toString(),
+                content: row[3].toString(),
+                manager: row[4].toString(),
+                supervisor: row[5].toString(),
+                procedure: row[6].toString(),
+              );
+              projects.add(project);
+              print('[DEBUG] Added project: ${project.name}');
+            } else {
+              print('[WARN] Skipping row - insufficient columns: $row');
+            }
+          } catch (e) {
+            print('[ERROR] Failed to parse row: $row');
+            print('[ERROR] Error: $e');
+          }
+        }
+        print('[DEBUG] Total projects imported: ${projects.length}');
+      }
+      print('[DEBUG] ===== CSV Parsing Completed =====');
+    } catch (e) {
+      print('[ERROR] ===== CSV Parsing Failed =====');
+      print('[ERROR] Error type: ${e.runtimeType}');
+      print('[ERROR] Error message: $e');
       Get.snackbar(
-        '오류',
-        'CSV 파일 처리 중 오류가 발생했습니다: ${e.toString()}',
+        'Error',
+        'Failed to import CSV file: $e',
         snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[900],
       );
     }
   }

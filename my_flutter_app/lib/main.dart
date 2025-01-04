@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:task_master_pro/constants/routes.dart';
+import 'package:task_master_pro/routes/app_pages.dart';
 import 'package:task_master_pro/controllers/auth/auth_controller.dart';
 import 'package:task_master_pro/controllers/project/project_controller.dart';
 import 'package:task_master_pro/screens/auth/login_screen.dart';
@@ -12,19 +14,24 @@ import 'package:task_master_pro/services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // StorageService 초기화
-  await StorageService().init();
-  
-  Get.put(AuthController());
-  Get.put(ProjectController());
-  
+  await initServices();  // 서비스 초기화
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  final authController = Get.put(AuthController());
+Future<void> initServices() async {
+  print('[INIT] Starting services initialization...');
+  
+  // GetStorage 초기화
+  await GetStorage.init();
+  
+  // 컨트롤러 초기화
+  Get.put(AuthController(), permanent: true);
+  Get.put(ProjectController(), permanent: true);
+  
+  print('[INIT] All services initialized');
+}
 
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
@@ -33,15 +40,9 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      initialRoute: Routes.login,
-      getPages: [
-        GetPage(name: Routes.login, page: () => LoginScreen()),
-        GetPage(name: Routes.register, page: () => RegisterScreen()),
-        GetPage(name: Routes.dashboard, page: () => DashboardScreen()),
-        GetPage(name: Routes.projectCreate, page: () => ProjectCreateScreen()),
-        GetPage(name: Routes.projectList, page: () => ProjectListScreen()),
-        // 다른 라우트들은 추후 추가
-      ],
+      initialRoute: Routes.splash,  // 스플래시 스크린으로 시작
+      getPages: AppPages.routes,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
