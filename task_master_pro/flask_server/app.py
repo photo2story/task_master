@@ -43,13 +43,40 @@ def init_db():
                 start_date TIMESTAMP,
                 status TEXT,
                 created_at TIMESTAMP,
-                updated_at TIMESTAMP
+                updated_at TIMESTAMP,
+                update_notes TEXT
             )
         ''')
         conn.commit()
         print("테이블 확인 완료")
     except Exception as e:
         print(f"테이블 생성 에러: {e}")
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
+
+def update_table_schema():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # update_notes 컬럼이 없으면 추가
+        cur.execute('''
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name='projects' AND column_name='update_notes'
+                ) THEN 
+                    ALTER TABLE projects ADD COLUMN update_notes TEXT;
+                END IF;
+            END $$;
+        ''')
+        conn.commit()
+        print("테이블 스키마 업데이트 완료")
+    except Exception as e:
+        print(f"테이블 스키마 업데이트 에러: {e}")
         conn.rollback()
     finally:
         cur.close()
@@ -135,7 +162,7 @@ def update_project(project_id):
             SET name = %s, category = %s, subcategory = %s, 
                 detail = %s, description = %s, manager = %s,
                 supervisor = %s, procedure = %s, start_date = %s,
-                status = %s, updated_at = %s
+                status = %s, updated_at = %s, update_notes = %s
             WHERE id = %s
         ''', (
             data['name'],
@@ -149,6 +176,7 @@ def update_project(project_id):
             data['startDate'],
             data['status'],
             datetime.now(),
+            data['updateNotes'],
             project_id
         ))
         
@@ -181,8 +209,38 @@ def delete_project(project_id):
         print(f"에러 발생: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/projects/<project_id>', methods=['GET'])
+def get_project(project_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute('SELECT * FROM projects WHERE id = %s', (project_id,))
+        project = cur.fetchone()
+        
+        if project is None:
+            return jsonify({'error': 'Project not found'}), 404
+            
+        # ISO 8601 형식으로 날짜 변환
+        if project['start_date']:
+            project['start_date'] = project['start_date'].isoformat()
+        if project['created_at']:
+            project['created_at'] = project['created_at'].isoformat()
+        if project['updated_at']:
+            project['updated_at'] = project['updated_at'].isoformat()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(project)
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     init_db()  # 서버 시작 시 테이블 생성
+    update_table_schema()  # 테이블 스키마 업데이트
     app.run(host='0.0.0.0', port=5000, debug=True)
     
     

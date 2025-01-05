@@ -6,13 +6,21 @@ import 'package:provider/provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'services/project_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/database_service.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ProjectService()),
+        Provider(
+          create: (_) => DatabaseService(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ProjectService(
+            context.read<DatabaseService>(),
+          ),
+        ),
       ],
       child: TaskMasterApp(),
     ),

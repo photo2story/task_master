@@ -17,11 +17,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
-  }
-
-  Future<void> _loadInitialData() async {
-    await context.read<ProjectService>().loadProjects();
+    // 화면 진입 시 프로젝트 목록 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProjectService>().loadProjects();
+    });
   }
 
   @override

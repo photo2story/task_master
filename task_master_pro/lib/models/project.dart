@@ -14,6 +14,7 @@ class Project {
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String updateNotes;
 
   Project({
     required this.id,
@@ -29,5 +30,40 @@ class Project {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
+    this.updateNotes = '',
   });
+
+  Project copyWith({
+    String? id,
+    String? name,
+    String? category,
+    String? subCategory,
+    String? detail,
+    String? description,
+    String? manager,
+    String? supervisor,
+    String? procedure,
+    DateTime? startDate,
+    String? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? updateNotes,
+  }) {
+    return Project(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      subCategory: subCategory ?? this.subCategory,
+      detail: detail ?? this.detail,
+      description: description ?? this.description,
+      manager: manager ?? this.manager,
+      supervisor: supervisor ?? this.supervisor,
+      procedure: procedure ?? this.procedure,
+      startDate: startDate ?? this.startDate,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      updateNotes: updateNotes ?? this.updateNotes,
+    );
+  }
 } 

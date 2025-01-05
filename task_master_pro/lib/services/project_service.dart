@@ -4,8 +4,11 @@ import '../models/task_template.dart';
 import 'database_service.dart';
 import 'package:uuid/uuid.dart';
 
-class ProjectService with ChangeNotifier {
-  final DatabaseService _databaseService = DatabaseService();
+class ProjectService extends ChangeNotifier {
+  final DatabaseService _databaseService;
+
+  ProjectService(this._databaseService);
+
   List<Project> _projects = [];
 
   List<Project> get projects => _projects;
@@ -23,50 +26,17 @@ class ProjectService with ChangeNotifier {
     }
   }
 
-  Future<void> createProject(TaskTemplate template, DateTime startDate) async {
+  Future<void> createProject(Project project) async {
     try {
-      // 프로젝트명 자동 생성: YYYYMMDD_구분_분류_상세
-      String projectName = '${startDate.year}${startDate.month.toString().padLeft(2, '0')}${startDate.day.toString().padLeft(2, '0')}_${template.category}_${template.subCategory}_${template.detail}';
-      
-      print('\n프로젝트 생성 정보:');
-      print('프로젝트명: $projectName');
-      print('업무절차: ${template.procedure}');
-
-      final project = Project(
-        id: const Uuid().v4(),
-        name: projectName,
-        category: template.category,
-        subCategory: template.subCategory,
-        detail: template.detail,
-        description: template.description,
-        manager: template.manager,
-        supervisor: template.supervisor,
-        procedure: template.procedure,
-        startDate: startDate,
-        status: '진행중',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      print('\n생성된 프로젝트:');
-      print('id: ${project.id}');
-      print('name: ${project.name}');
-      print('procedure: ${project.procedure}');
-
-      // 프로젝트 목록에 추가
-      _projects = [..._projects, project];
-      
-      // 데이터베이스에 저장
       await _databaseService.insertProject(project);
       
-      // UI 갱신
+      // 로컬 프로젝트 목록에도 추가
+      _projects = [..._projects, project];
+      
+      // UI 갱신을 위해 알림
       notifyListeners();
-      
-      print('\n프로젝트 저장 완료');
-      
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('프로젝트 생성 에러: $e');
-      print('스택 트레이스: $stackTrace');
       rethrow;
     }
   }
@@ -98,6 +68,15 @@ class ProjectService with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('프로젝트 삭제 에러: $e');
+      rethrow;
+    }
+  }
+
+  Future<Project> getProject(String projectId) async {
+    try {
+      return await _databaseService.getProject(projectId);
+    } catch (e) {
+      print('프로젝트 조회 에러: $e');
       rethrow;
     }
   }

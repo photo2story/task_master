@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/project.dart';
 import '../config/database_config.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class DatabaseService {
   final String baseUrl = DatabaseConfig.projectsUrl;
@@ -77,6 +78,7 @@ class DatabaseService {
           status: json['status'],
           createdAt: DateTime.parse(json['created_at']),
           updatedAt: DateTime.parse(json['updated_at']),
+          updateNotes: json['update_notes'] ?? '',
         )).toList();
       } else {
         throw Exception('프로젝트 목록 조회 실패: ${response.statusCode}');
@@ -110,8 +112,12 @@ class DatabaseService {
           'procedure': project.procedure,
           'startDate': project.startDate.toIso8601String(),
           'status': project.status,
+          'updateNotes': project.updateNotes,
         }),
       );
+
+      print('서버 응답: ${response.statusCode}');
+      print('응답 내용: ${response.body}');
 
       if (response.statusCode != 200) {
         throw Exception('프로젝트 수정 실패: ${response.statusCode} - ${response.body}');
@@ -139,6 +145,39 @@ class DatabaseService {
       }
     } catch (e) {
       print('프로젝트 삭제 에러: $e');
+      rethrow;
+    }
+  }
+
+  Future<Project> getProject(String projectId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/$projectId'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return Project(
+          id: data['id'],
+          name: data['name'],
+          category: data['category'],
+          subCategory: data['subcategory'],
+          detail: data['detail'],
+          description: data['description'],
+          manager: data['manager'],
+          supervisor: data['supervisor'],
+          procedure: data['procedure'],
+          startDate: DateTime.parse(data['start_date']),
+          status: data['status'],
+          createdAt: DateTime.parse(data['created_at']),
+          updatedAt: DateTime.parse(data['updated_at']),
+          updateNotes: data['update_notes'] ?? '',
+        );
+      } else {
+        throw Exception('프로젝트 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('프로젝트 조회 에러: $e');
       rethrow;
     }
   }

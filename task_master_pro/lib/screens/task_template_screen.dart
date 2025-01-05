@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/csv_service.dart';
+import '../models/task_template.dart';
 import 'project_create_screen.dart';
 
 class TaskTemplateScreen extends StatelessWidget {
@@ -75,14 +76,7 @@ class TaskTemplateScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ProjectCreateScreen(
-                                    initialCategory: template.category,
-                                    initialSubCategory: template.subCategory,
-                                    initialDetail: template.detail,
-                                    initialDescription: template.description,
-                                    initialManager: template.manager,
-                                    initialSupervisor: template.supervisor,
-                                  ),
+                                  builder: (context) => ProjectCreateScreen(template: template),
                                 ),
                               );
                             },
