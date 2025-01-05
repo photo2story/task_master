@@ -8,6 +8,7 @@ import 'project_create_screen.dart';
 import 'task_template_screen.dart';
 import 'project_detail_screen.dart';
 import '../widgets/project_pie_chart.dart';
+import '../widgets/project_progress_indicator.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -91,9 +92,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Padding(
             padding: EdgeInsets.all(8),
-            child: Text(
-              '이번 달 프로젝트',
-              style: Theme.of(context).textTheme.titleMedium,
+            child: Row(
+              children: [
+                Text(
+                  '이번 달 프로젝트',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Consumer<ProjectService>(
+                    builder: (context, projectService, _) {
+                      final currentMonthProjects = projectService.projects
+                          .where((p) =>
+                            p.startDate.year == DateTime.now().year &&
+                            p.startDate.month == DateTime.now().month
+                          )
+                          .toList();
+                      
+                      return ProjectProgressIndicator(projects: currentMonthProjects);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
           Consumer<ProjectService>(
@@ -105,8 +125,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   )
                   .toList()
                   ..sort((a, b) {
-                    if (a.status == '완료' && b.status != '완료') return 1;
-                    if (a.status != '완료' && b.status == '완료') return -1;
+                    final isACompleted = a.status == '완료' || a.status == '보류';
+                    final isBCompleted = b.status == '완료' || b.status == '보류';
+                    if (isACompleted && !isBCompleted) return 1;
+                    if (!isACompleted && isBCompleted) return -1;
                     return a.startDate.compareTo(b.startDate);
                   });
 
@@ -134,7 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
-                                          color: project.status == '완료'
+                                          color: (project.status == '완료' || project.status == '보류')
                                               ? Color(0xFFFFE5B4).withOpacity(0.5)
                                               : Color(0xFFFFE5B4),
                                         ),
@@ -143,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         text: project.name.substring(8),
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: project.status == '완료'
+                                          color: (project.status == '완료' || project.status == '보류')
                                               ? (Theme.of(context).brightness == Brightness.dark
                                                   ? Colors.grey[600]
                                                   : Colors.grey[400])
@@ -178,7 +200,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             project.description,
                             style: TextStyle(
                               fontSize: 12,
-                              color: project.status == '완료'
+                              color: (project.status == '완료' || project.status == '보류')
                                   ? Color(0xFFFFB5B5).withOpacity(0.5)
                                   : Color(0xFFFFB5B5),
                             ),
@@ -205,8 +227,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         )
         .toList()
         ..sort((a, b) {
-          if (a.status == '완료' && b.status != '완료') return 1;
-          if (a.status != '완료' && b.status == '완료') return -1;
+          final isACompleted = a.status == '완료' || a.status == '보류';
+          final isBCompleted = b.status == '완료' || b.status == '보류';
+          if (isACompleted && !isBCompleted) return 1;
+          if (!isACompleted && isBCompleted) return -1;
           return a.startDate.compareTo(b.startDate);
         });
     
@@ -408,7 +432,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: project.status == '완료'
+                                  color: (project.status == '완료' || project.status == '보류')
                                       ? Color(0xFFFFE5B4).withOpacity(0.5)
                                       : Color(0xFFFFE5B4),
                                 ),
@@ -417,7 +441,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 text: project.name.substring(8),
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: project.status == '완료'
+                                  color: (project.status == '완료' || project.status == '보류')
                                       ? (Theme.of(context).brightness == Brightness.dark
                                           ? Colors.grey[600]
                                           : Colors.grey[400])
@@ -452,7 +476,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     project.description,
                     style: TextStyle(
                       fontSize: 12,
-                      color: project.status == '완료'
+                      color: (project.status == '완료' || project.status == '보류')
                           ? Color(0xFFFFB5B5).withOpacity(0.5)
                           : Color(0xFFFFB5B5),
                     ),
