@@ -7,9 +7,19 @@ import 'screens/dashboard_screen.dart';
 import 'services/project_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/database_service.dart';
+import 'package:flutter/services.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  
+  // 가로 모드 활성화
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+    DeviceOrientation.portraitUp,
+  ]);
+
   runApp(
     MultiProvider(
       providers: [

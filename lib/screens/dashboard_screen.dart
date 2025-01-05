@@ -38,9 +38,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 화면 크기 가져오기
     final screenWidth = MediaQuery.of(context).size.width;
-    final isNarrowScreen = screenWidth < 600; // 기준값을 600으로 낮춤
+    final isNarrowScreen = screenWidth < 600;
 
     return Scaffold(
       appBar: AppBar(
@@ -52,24 +51,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             tooltip: '새로고침',
           ),
           IconButton(
-            icon: Icon(Icons.list),
+            icon: Icon(Icons.add),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => TaskTemplateScreen()),
             ),
-            tooltip: '업무 목록',
+            tooltip: '새 프로젝트',
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => TaskTemplateScreen()),
-        ),
-        child: Icon(Icons.add),
-        tooltip: '새 프로젝트',
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: SingleChildScrollView(
         child: isNarrowScreen
           ? Column(
