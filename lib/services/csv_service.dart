@@ -160,25 +160,60 @@ class CsvService {
 
   // CSV 문자열을 Project 객체 리스트로 변환
   List<Project> _parseCsvToProjects(String csvData) {
-    final csvTable = const CsvToListConverter().convert(csvData);
-    return csvTable.skip(1).map((row) {
-      return Project(
-        id: row[0].toString(),
-        name: row[1].toString(),
-        category: row[2].toString(),
-        subCategory: row[3].toString(),
-        description: row[4].toString(),
-        detail: row[5].toString(),
-        procedure: row[6].toString(),
-        startDate: DateTime.parse(row[7].toString()),
-        status: row[8].toString(),
-        manager: row[9].toString(),
-        supervisor: row[10].toString(),
-        createdAt: DateTime.parse(row[11].toString()),
-        updatedAt: DateTime.parse(row[12].toString()),
-        updateNotes: row[13].toString(),
+    try {
+      print('\nCSV 파싱 시도:');
+      
+      final csvConverter = CsvToListConverter(
+        shouldParseNumbers: false,
+        fieldDelimiter: ',',
+        eol: '\n',
       );
-    }).toList();
+      
+      final List<List<dynamic>> csvTable = csvConverter.convert(csvData);
+      print('CSV 테이블 행 수: ${csvTable.length}');
+      
+      if (csvTable.isEmpty) {
+        print('CSV 테이블이 비어있습니다');
+        return [];
+      }
+      
+      print('헤더: ${csvTable[0]}');
+      if (csvTable.length > 1) {
+        print('첫 번째 데이터 행: ${csvTable[1]}');
+      }
+      
+      final projects = csvTable.skip(1).map((row) {
+        try {
+          print('행 처리 중: $row');
+          return Project(
+            id: row[0].toString(),
+            name: row[1].toString(),
+            category: row[2].toString(),
+            subCategory: row[3].toString(),
+            description: row[4].toString(),
+            detail: row[5].toString(),
+            procedure: row[6].toString(),
+            startDate: DateTime.parse(row[7].toString()),
+            status: row[8].toString(),
+            manager: row[9].toString(),
+            supervisor: row[10].toString(),
+            createdAt: DateTime.parse(row[11].toString()),
+            updatedAt: DateTime.parse(row[12].toString()),
+            updateNotes: row[13].toString(),
+          );
+        } catch (e) {
+          print('행 변환 에러: $row');
+          print('에러 내용: $e');
+          rethrow;
+        }
+      }).toList();
+      
+      print('변환된 프로젝트 수: ${projects.length}');
+      return projects;
+    } catch (e) {
+      print('CSV 파싱 에러: $e');
+      return [];
+    }
   }
 
   // Project 객체 리스트를 CSV 문자열로 변환
