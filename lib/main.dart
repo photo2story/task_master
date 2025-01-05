@@ -41,12 +41,37 @@ class TaskMasterApp extends StatelessWidget {
     return MaterialApp(
       title: 'Task Master',
       theme: ThemeData(
+        brightness: Brightness.light,
         primarySwatch: Colors.blue,
         cardTheme: CardTheme(
           elevation: 2,
           margin: EdgeInsets.all(8),
         ),
       ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+        cardTheme: CardTheme(
+          elevation: 2,
+          margin: EdgeInsets.all(8),
+          color: Colors.black,
+        ),
+        scaffoldBackgroundColor: Colors.black,
+        colorScheme: ColorScheme.dark(
+          primary: Colors.blue,
+          secondary: Colors.blueAccent,
+          surface: Colors.black,
+          background: Colors.black,
+        ),
+        listTileTheme: ListTileThemeData(
+          tileColor: Colors.transparent,
+        ),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.black,
+          elevation: 0,
+        ),
+      ),
+      themeMode: ThemeMode.dark,
       localizationsDelegates: [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

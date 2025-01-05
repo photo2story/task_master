@@ -119,9 +119,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           title: Row(
                             children: [
                               Expanded(
-                                child: Text(
-                                  project.name,
-                                  style: TextStyle(fontSize: 13),
+                                child: RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: project.name.substring(0, 8),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFFFE5B4),
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: project.name.substring(8),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.grey[300]
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -142,7 +161,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           subtitle: Text(
                             project.description,
-                            style: TextStyle(fontSize: 12),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFFFB5B5),
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -225,8 +247,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         },
                         availableGestures: AvailableGestures.none,
                         daysOfWeekStyle: DaysOfWeekStyle(
-                          weekdayStyle: TextStyle(fontSize: 10),
-                          weekendStyle: TextStyle(fontSize: 10),
+                          weekdayStyle: TextStyle(
+                            fontSize: 10,
+                            color: Theme.of(context).brightness == Brightness.dark 
+                                ? Colors.white70 
+                                : Colors.black87,
+                          ),
+                          weekendStyle: TextStyle(
+                            fontSize: 10,
+                            color: Theme.of(context).brightness == Brightness.dark 
+                                ? Colors.red[200] 
+                                : Colors.red,
+                          ),
                         ),
                         headerStyle: HeaderStyle(
                           formatButtonVisible: false,
@@ -241,16 +273,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         rowHeight: 18,     // 날짜 행 높이 증가
                         calendarStyle: CalendarStyle(
                           outsideDaysVisible: false,
-                          cellMargin: EdgeInsets.all(1), // 셀 마진 추가
+                          cellMargin: EdgeInsets.all(1),
                           cellPadding: EdgeInsets.zero,
-                          defaultTextStyle: TextStyle(fontSize: 11),
-                          weekendTextStyle: TextStyle(fontSize: 11),
+                          defaultTextStyle: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).brightness == Brightness.dark 
+                                ? Colors.grey[400]  // 밝은 회색
+                                : Colors.black87,
+                          ),
+                          weekendTextStyle: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).brightness == Brightness.dark 
+                                ? Colors.red[200]  // 주말은 빨간색 유지
+                                : Colors.red,
+                          ),
                           selectedTextStyle: TextStyle(
                             fontSize: 11,
-                            color: Colors.white,
+                            color: Colors.white,  // 선택된 날짜는 흰색 유지
                             fontWeight: FontWeight.bold,
                           ),
-                          todayTextStyle: TextStyle(fontSize: 11),
+                          todayTextStyle: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).brightness == Brightness.dark 
+                                ? Colors.grey[300]  // 오늘 날짜는 조금 더 밝은 회색
+                                : Colors.black87,
+                          ),
                         ),
                         calendarBuilders: CalendarBuilders(
                           defaultBuilder: (context, date, _) {
@@ -259,14 +306,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               margin: EdgeInsets.all(1),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: events.isNotEmpty ? Colors.blue[100] : null,
+                                color: events.isNotEmpty 
+                                    ? (Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.blue[900]  // 다크모드에서는 진한 파란색
+                                        : Colors.blue[100])
+                                    : null,
                               ),
                               child: Center(
                                 child: Text(
                                   '${date.day}',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.black87,
+                                    color: Theme.of(context).brightness == Brightness.dark 
+                                        ? Colors.grey[400]
+                                        : Colors.black87,
                                   ),
                                 ),
                               ),
@@ -278,14 +331,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               margin: EdgeInsets.all(1),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: events.isNotEmpty ? Colors.blue[200] : Colors.blue[50],
+                                color: events.isNotEmpty
+                                    ? (Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.blue[800]  // 이벤트가 있는 선택된 날짜
+                                        : Colors.blue[200])
+                                    : (Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.grey[800]  // 이벤트가 없는 선택된 날짜
+                                        : Colors.blue[50]),
                               ),
                               child: Center(
                                 child: Text(
                                   '${date.day}',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.black87,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.white  // 선택된 날짜는 흰색으로 변경
+                                        : Colors.black87,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -316,9 +377,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          project.name,
-                          style: TextStyle(fontSize: 13),
+                        child: RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: project.name.substring(0, 8),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFFFE5B4),
+                                ),
+                              ),
+                              TextSpan(
+                                text: project.name.substring(8),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.grey[300]
+                                      : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -339,7 +419,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   subtitle: Text(
                     project.description,
-                    style: TextStyle(fontSize: 12),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFFFB5B5),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -356,13 +439,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case '진행중':
-        return Colors.blue[100]!;
+        return Theme.of(context).brightness == Brightness.dark
+            ? Colors.blue[900]!  // 다크모드에서는 진한 파란색
+            : Colors.blue[100]!;
       case '완료':
-        return Colors.green[100]!;
+        return Theme.of(context).brightness == Brightness.dark
+            ? Colors.green[900]!  // 다크모드에서는 진한 초록색
+            : Colors.green[100]!;
       case '지연':
-        return Colors.red[100]!;
+        return Theme.of(context).brightness == Brightness.dark
+            ? Colors.red[900]!  // 다크모드에서는 진한 빨간색
+            : Colors.red[100]!;
       default:
-        return Colors.grey[100]!;
+        return Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]!  // 다크모드에서는 진한 회색
+            : Colors.grey[100]!;
     }
   }
 
