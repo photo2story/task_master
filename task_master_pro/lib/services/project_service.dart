@@ -12,27 +12,14 @@ class ProjectService with ChangeNotifier {
 
   Future<void> loadProjects() async {
     try {
-      // 임시 테스트 데이터
-      _projects = [
-        Project(
-          id: '1',
-          name: '인사_채용_신입공채',
-          category: '인사',
-          subCategory: '채용',
-          detail: '신입공채',
-          description: '신규가점 및 추가채용 등 진행',
-          manager: '김민수',
-          supervisor: '오석풍',
-          procedure: '면접공고 → 서류전형 → 면접 → 추가선발 → 입사진행',
-          startDate: DateTime.now(),
-          status: '진행중',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+      print('\n프로젝트 목록 로드 시도');
+      // 서버에서 프로젝트 목록 가져오기
+      _projects = await _databaseService.getProjects();
+      print('로드된 프로젝트 수: ${_projects.length}');
       notifyListeners();
     } catch (e) {
       print('프로젝트 로드 에러: $e');
+      rethrow;
     }
   }
 
@@ -41,6 +28,10 @@ class ProjectService with ChangeNotifier {
       // 프로젝트명 자동 생성: YYYYMMDD_구분_분류_상세
       String projectName = '${startDate.year}${startDate.month.toString().padLeft(2, '0')}${startDate.day.toString().padLeft(2, '0')}_${template.category}_${template.subCategory}_${template.detail}';
       
+      print('\n프로젝트 생성 정보:');
+      print('프로젝트명: $projectName');
+      print('업무절차: ${template.procedure}');
+
       final project = Project(
         id: const Uuid().v4(),
         name: projectName,
@@ -57,21 +48,56 @@ class ProjectService with ChangeNotifier {
         updatedAt: DateTime.now(),
       );
 
-      print('생성된 프로젝트 정보:');
-      print('업무내용: ${project.description}');
-      print('업무절차: ${project.procedure}');
+      print('\n생성된 프로젝트:');
+      print('id: ${project.id}');
+      print('name: ${project.name}');
+      print('procedure: ${project.procedure}');
 
       // 프로젝트 목록에 추가
       _projects = [..._projects, project];
       
       // 데이터베이스에 저장
-      await DatabaseService().insertProject(project);
+      await _databaseService.insertProject(project);
       
       // UI 갱신
       notifyListeners();
       
-    } catch (e) {
+      print('\n프로젝트 저장 완료');
+      
+    } catch (e, stackTrace) {
       print('프로젝트 생성 에러: $e');
+      print('스택 트레이스: $stackTrace');
+      rethrow;
+    }
+  }
+
+  // 프로젝트 수정
+  Future<void> updateProject(Project project) async {
+    try {
+      await _databaseService.updateProject(project);
+      
+      // 로컬 목록 업데이트
+      final index = _projects.indexWhere((p) => p.id == project.id);
+      if (index != -1) {
+        _projects[index] = project;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('프로젝트 수정 에러: $e');
+      rethrow;
+    }
+  }
+
+  // 프로젝트 삭제
+  Future<void> deleteProject(String projectId) async {
+    try {
+      await _databaseService.deleteProject(projectId);
+      
+      // 로컬 목록에서 제거
+      _projects.removeWhere((p) => p.id == projectId);
+      notifyListeners();
+    } catch (e) {
+      print('프로젝트 삭제 에러: $e');
       rethrow;
     }
   }
