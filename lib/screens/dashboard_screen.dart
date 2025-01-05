@@ -62,6 +62,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: SingleChildScrollView(
+        physics: BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         child: isNarrowScreen
           ? Column(
               mainAxisSize: MainAxisSize.min,
@@ -136,7 +137,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ? Center(child: Text('이번 달 프로젝트가 없습니다'))
                   : ListView.builder(
                       shrinkWrap: true,
-                      physics: AlwaysScrollableScrollPhysics(),
+                      physics: NeverScrollableScrollPhysics(),
+                      padding: EdgeInsets.zero,
                       itemCount: currentMonthProjects.length,
                       itemBuilder: (context, index) {
                         final project = currentMonthProjects[index];
@@ -412,7 +414,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
             child: ListView.builder(
               shrinkWrap: true,
-              physics: AlwaysScrollableScrollPhysics(),
+              physics: NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
               itemCount: currentMonthProjects.length,
               itemBuilder: (context, index) {
                 final project = currentMonthProjects[index];
