@@ -37,6 +37,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 화면 크기 가져오기
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isNarrowScreen = screenWidth < 800; // 좁은 화면 기준
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Task Master'),
@@ -65,62 +69,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
         tooltip: '새 프로젝트',
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: Row(
-        children: [
-          // 왼쪽: 이번 달 프로젝트
-          Expanded(
-            flex: 1,
-            child: _buildCurrentMonthProjects(),
-          ),
-          // 오른쪽: 다음 프로젝트들
-          Expanded(
-            flex: 1,
-            child: _buildUpcomingProjects(),
-          ),
-        ],
-      ),
+      body: isNarrowScreen
+          // 좁은 화면: 세로 배치
+          ? Column(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: _buildCurrentMonthProjects(),
+                ),
+                Divider(height: 1),
+                Expanded(
+                  flex: 1,
+                  child: _buildUpcomingProjects(),
+                ),
+              ],
+            )
+          // 넓은 화면: 가로 배치
+          : Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: _buildCurrentMonthProjects(),
+                ),
+                VerticalDivider(width: 1),
+                Expanded(
+                  flex: 1,
+                  child: _buildUpcomingProjects(),
+                ),
+              ],
+            ),
     );
   }
 
   Widget _buildCurrentMonthProjects() {
-    final projects = context.watch<ProjectService>().projects;
-    final currentMonthProjects = projects.where((p) => 
-      p.startDate.year == DateTime.now().year && 
-      p.startDate.month == DateTime.now().month
-    ).toList();
-
     return Card(
       margin: EdgeInsets.all(8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(8),
             child: Text(
               '이번 달 프로젝트',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadProjects,
-              child: currentMonthProjects.isEmpty
-                  ? Center(child: Text('이번 달 프로젝트가 없습니다.'))
-                  : ListView.builder(
-                      itemCount: currentMonthProjects.length,
-                      itemBuilder: (context, index) {
-                        final project = currentMonthProjects[index];
-                        return ListTile(
-                          title: Text(project.name),
-                          subtitle: Text(project.description),
-                          trailing: Chip(
-                            label: Text(project.status),
-                            backgroundColor: _getStatusColor(project.status),
-                          ),
-                          onTap: () => _showProjectDetails(project),
-                        );
-                      },
-                    ),
+            child: Consumer<ProjectService>(
+              builder: (context, projectService, _) {
+                final currentMonthProjects = projectService.projects.where((p) =>
+                  p.startDate.year == DateTime.now().year &&
+                  p.startDate.month == DateTime.now().month
+                ).toList();
+
+                return currentMonthProjects.isEmpty
+                    ? Center(child: Text('이번 달 프로젝트가 없습니다'))
+                    : ListView.builder(
+                        itemCount: currentMonthProjects.length,
+                        itemBuilder: (context, index) {
+                          final project = currentMonthProjects[index];
+                          return ListTile(
+                            dense: true,
+                            visualDensity: VisualDensity.compact,
+                            title: Text(
+                              project.name,
+                              style: TextStyle(fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              project.description,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            trailing: Chip(
+                              label: Text(
+                                project.status,
+                                style: TextStyle(fontSize: 11),
+                              ),
+                              padding: EdgeInsets.zero,
+                              labelPadding: EdgeInsets.symmetric(horizontal: 8),
+                              backgroundColor: _getStatusColor(project.status),
+                            ),
+                          );
+                        },
+                      );
+              },
             ),
           ),
         ],
@@ -131,13 +161,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildUpcomingProjects() {
     final projects = context.watch<ProjectService>().projects;
     
-    // 현재 표시된 월의 프로젝트 필터링
     final currentMonthProjects = projects.where((p) => 
       p.startDate.year == _focusedDay.year && 
       p.startDate.month == _focusedDay.month
     ).toList();
     
-    // 카테고리별 통계 계산
     Map<String, int> categoryStats = {};
     for (var project in currentMonthProjects) {
       categoryStats[project.category] = (categoryStats[project.category] ?? 0) + 1;
@@ -146,16 +174,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Card(
       margin: EdgeInsets.all(8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(8),
             child: Text(
               '다음 프로젝트',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-          // 상단 영역
           Container(
             padding: EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
@@ -164,12 +190,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 왼쪽: 파이 차트
                 SizedBox(
                   width: 140,
                   child: ProjectPieChart(categoryStats: categoryStats),
                 ),
-                // 오른쪽: 달력
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -265,7 +289,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          // 하단 영역: 프로젝트 목록
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadProjects,
@@ -276,7 +299,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 itemBuilder: (context, index) {
                   final project = currentMonthProjects[index];
                   return ListTile(
-                    title: Text(project.name, style: TextStyle(fontSize: 14)),
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    title: Text(
+                      project.name,
+                      style: TextStyle(fontSize: 13),
+                    ),
                     subtitle: Row(
                       children: [
                         Icon(Icons.calendar_today, size: 12),
@@ -297,11 +325,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     trailing: Chip(
-                      label: Text(project.status),
+                      label: Text(
+                        project.status,
+                        style: TextStyle(fontSize: 11),
+                      ),
+                      padding: EdgeInsets.zero,
+                      labelPadding: EdgeInsets.symmetric(horizontal: 8),
                       backgroundColor: _getStatusColor(project.status),
                     ),
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
                     onTap: () => _showProjectDetails(project),
                   );
                 },

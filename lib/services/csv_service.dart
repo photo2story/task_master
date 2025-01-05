@@ -68,27 +68,17 @@ class CsvService {
 
   // GitHub에서 프로젝트 목록 가져오기
   Future<List<Project>> fetchProjects() async {
+    // 모든 프로젝트를 로드합니다 (날짜 필터링 없음)
     try {
       print('\n프로젝트 목록 가져오기 시도:');
-      print('URL: $projectListUrl');
-      
       final response = await http.get(Uri.parse(projectListUrl));
-      print('응답 상태 코드: ${response.statusCode}');
-      
       if (response.statusCode == 200) {
-        final csvData = response.body;
-        print('CSV 데이터 수신 (일부):');
-        print(csvData.split('\n').take(2).join('\n'));
-        
-        final projects = _parseCsvToProjects(csvData);
-        print('파싱된 프로젝트 수: ${projects.length}');
+        final projects = _parseCsvToProjects(response.body);
+        print('전체 로드된 프로젝트 수: ${projects.length}');
         return projects;
       }
-      
-      print('프로젝트 목록 가져오기 실패: ${response.statusCode}');
       return [];
     } catch (e) {
-      print('프로젝트 목록 가져오기 에러: $e');
       return [];
     }
   }
