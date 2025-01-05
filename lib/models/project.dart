@@ -14,7 +14,7 @@ class Project {
   final String supervisor;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String updateNotes;
+  final String? updateNotes;
 
   Project({
     required this.id,
@@ -30,7 +30,7 @@ class Project {
     required this.supervisor,
     required this.createdAt,
     required this.updatedAt,
-    required this.updateNotes,
+    this.updateNotes,
   });
 
   Project copyWith({
@@ -83,4 +83,55 @@ class Project {
     'updatedAt': updatedAt.toIso8601String(),
     'updateNotes': updateNotes,
   };
+
+  factory Project.fromCsv(List<dynamic> row) {
+    String sanitize(dynamic value) {
+      return (value?.toString() ?? '').trim();
+    }
+
+    DateTime parseDate(String value) {
+      try {
+        return DateTime.parse(value.trim());
+      } catch (e) {
+        print('날짜 파싱 오류: $value');
+        return DateTime.now();
+      }
+    }
+
+    return Project(
+      id: sanitize(row[0]),
+      name: sanitize(row[1]),
+      category: sanitize(row[2]),
+      subCategory: sanitize(row[3]),
+      description: sanitize(row[4]),
+      detail: sanitize(row[5]),
+      procedure: sanitize(row[6]),
+      startDate: parseDate(sanitize(row[7])),
+      status: sanitize(row[8]),
+      manager: sanitize(row[9]),
+      supervisor: sanitize(row[10]),
+      createdAt: parseDate(sanitize(row[11])),
+      updatedAt: parseDate(sanitize(row[12])),
+      updateNotes: row.length > 13 ? sanitize(row[13]) : null,
+    );
+  }
+
+  List<String> toCsv() {
+    return [
+      id,
+      name,
+      category,
+      subCategory,
+      description,
+      detail,
+      procedure,
+      startDate.toIso8601String(),
+      status,
+      manager,
+      supervisor,
+      createdAt.toIso8601String(),
+      updatedAt.toIso8601String(),
+      updateNotes ?? '',
+    ];
+  }
 } 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'dart:math';
 import '../services/project_service.dart';
 import '../models/project.dart';
 import 'project_create_screen.dart';
@@ -39,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     // 화면 크기 가져오기
     final screenWidth = MediaQuery.of(context).size.width;
-    final isNarrowScreen = screenWidth < 800; // 좁은 화면 기준
+    final isNarrowScreen = screenWidth < 600; // 기준값을 600으로 낮춤
 
     return Scaffold(
       appBar: AppBar(
@@ -69,35 +70,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         tooltip: '새 프로젝트',
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: isNarrowScreen
-          // 좁은 화면: 세로 배치
+      body: SingleChildScrollView(
+        child: isNarrowScreen
           ? Column(
               children: [
-                Expanded(
-                  flex: 1,
-                  child: _buildCurrentMonthProjects(),
-                ),
-                Divider(height: 1),
-                Expanded(
-                  flex: 1,
-                  child: _buildUpcomingProjects(),
-                ),
+                _buildCurrentMonthProjects(),
+                _buildUpcomingProjects(),
               ],
             )
-          // 넓은 화면: 가로 배치
           : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 1,
+                Flexible(
                   child: _buildCurrentMonthProjects(),
                 ),
-                VerticalDivider(width: 1),
                 Expanded(
-                  flex: 1,
                   child: _buildUpcomingProjects(),
                 ),
               ],
             ),
+      ),
     );
   }
 
@@ -113,45 +105,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-          Expanded(
-            child: Consumer<ProjectService>(
-              builder: (context, projectService, _) {
-                final currentMonthProjects = projectService.projects.where((p) =>
-                  p.startDate.year == DateTime.now().year &&
-                  p.startDate.month == DateTime.now().month
-                ).toList();
+          Consumer<ProjectService>(
+            builder: (context, projectService, _) {
+              final currentMonthProjects = projectService.projects.where((p) =>
+                p.startDate.year == DateTime.now().year &&
+                p.startDate.month == DateTime.now().month
+              ).toList();
 
-                return currentMonthProjects.isEmpty
-                    ? Center(child: Text('이번 달 프로젝트가 없습니다'))
-                    : ListView.builder(
-                        itemCount: currentMonthProjects.length,
-                        itemBuilder: (context, index) {
-                          final project = currentMonthProjects[index];
-                          return ListTile(
-                            dense: true,
-                            visualDensity: VisualDensity.compact,
-                            title: Text(
-                              project.name,
-                              style: TextStyle(fontSize: 13),
-                            ),
-                            subtitle: Text(
-                              project.description,
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            trailing: Chip(
-                              label: Text(
-                                project.status,
-                                style: TextStyle(fontSize: 11),
+              return currentMonthProjects.isEmpty
+                  ? Center(child: Text('이번 달 프로젝트가 없습니다'))
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: AlwaysScrollableScrollPhysics(),
+                      itemCount: currentMonthProjects.length,
+                      itemBuilder: (context, index) {
+                        final project = currentMonthProjects[index];
+                        return ListTile(
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          minLeadingWidth: 0,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  project.name,
+                                  style: TextStyle(fontSize: 13),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              padding: EdgeInsets.zero,
-                              labelPadding: EdgeInsets.symmetric(horizontal: 8),
-                              backgroundColor: _getStatusColor(project.status),
-                            ),
-                          );
-                        },
-                      );
-              },
-            ),
+                              SizedBox(width: 4),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(project.status),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  project.status,
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Text(
+                            project.description,
+                            style: TextStyle(fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () => _showProjectDetails(project),
+                        );
+                      },
+                    );
+            },
           ),
         ],
       ),
@@ -160,7 +168,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildUpcomingProjects() {
     final projects = context.watch<ProjectService>().projects;
-    
     final currentMonthProjects = projects.where((p) => 
       p.startDate.year == _focusedDay.year && 
       p.startDate.month == _focusedDay.month
@@ -182,26 +189,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-          Container(
-            padding: EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 140,
-                  child: ProjectPieChart(categoryStats: categoryStats),
-                ),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: SizedBox(
-                      width: 160,
+          SizedBox(
+            height: 220,
+            child: Card(
+              margin: EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border(right: BorderSide(color: Colors.grey[300]!)),
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: ProjectPieChart(categoryStats: categoryStats),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
                       child: TableCalendar(
-                        firstDay: DateTime.now().add(Duration(days: 1)),
-                        lastDay: DateTime(DateTime.now().year, 12, 31),
+                        firstDay: DateTime.now(),
+                        lastDay: DateTime(DateTime.now().year + 1, 12, 31),
                         focusedDay: _focusedDay,
                         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                         onDaySelected: (selectedDay, focusedDay) {
@@ -211,17 +224,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           });
                         },
                         onPageChanged: (focusedDay) {
-                          _focusedDay = focusedDay;
+                          setState(() {
+                            _focusedDay = focusedDay;
+                          });
                           _loadProjects();
                         },
                         eventLoader: (day) {
                           return projects.where((p) => isSameDay(p.startDate, day)).toList();
                         },
                         availableGestures: AvailableGestures.none,
+                        daysOfWeekStyle: DaysOfWeekStyle(
+                          weekdayStyle: TextStyle(fontSize: 10),
+                          weekendStyle: TextStyle(fontSize: 10),
+                        ),
+                        headerStyle: HeaderStyle(
+                          formatButtonVisible: false,
+                          titleCentered: true,
+                          titleTextStyle: TextStyle(fontSize: 12),
+                          leftChevronIcon: Icon(Icons.chevron_left, size: 14),
+                          rightChevronIcon: Icon(Icons.chevron_right, size: 14),
+                          headerPadding: EdgeInsets.symmetric(vertical: 4),
+                          headerMargin: EdgeInsets.only(bottom: 4),
+                        ),
+                        daysOfWeekHeight: 20, // 요일 행 높이 증가
+                        rowHeight: 18,     // 날짜 행 높이 증가
                         calendarStyle: CalendarStyle(
                           outsideDaysVisible: false,
-                          cellMargin: EdgeInsets.zero,
-                          cellPadding: EdgeInsets.all(1),
+                          cellMargin: EdgeInsets.all(1), // 셀 마진 추가
+                          cellPadding: EdgeInsets.zero,
                           defaultTextStyle: TextStyle(fontSize: 11),
                           weekendTextStyle: TextStyle(fontSize: 11),
                           selectedTextStyle: TextStyle(
@@ -272,71 +302,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             );
                           },
                         ),
-                        headerStyle: HeaderStyle(
-                          formatButtonVisible: false,
-                          titleCentered: true,
-                          titleTextStyle: TextStyle(fontSize: 12),
-                          leftChevronIcon: Icon(Icons.chevron_left, size: 14),
-                          rightChevronIcon: Icon(Icons.chevron_right, size: 14),
-                          headerPadding: EdgeInsets.symmetric(vertical: 2),
-                        ),
-                        daysOfWeekHeight: 16,
-                        rowHeight: 18,
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadProjects,
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: AlwaysScrollableScrollPhysics(),
-                itemCount: currentMonthProjects.length,
-                itemBuilder: (context, index) {
-                  final project = currentMonthProjects[index];
-                  return ListTile(
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                    title: Text(
-                      project.name,
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    subtitle: Row(
-                      children: [
-                        Icon(Icons.calendar_today, size: 12),
-                        SizedBox(width: 4),
-                        Text(
-                          '${project.startDate.month}/${project.startDate.day}',
-                          style: TextStyle(fontSize: 12),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: AlwaysScrollableScrollPhysics(),
+              itemCount: currentMonthProjects.length,
+              itemBuilder: (context, index) {
+                final project = currentMonthProjects[index];
+                return ListTile(
+                  dense: true,
+                  visualDensity: VisualDensity.compact,
+                  minLeadingWidth: 0,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          project.name,
+                          style: TextStyle(fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            project.detail,
-                            style: TextStyle(fontSize: 12),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    trailing: Chip(
-                      label: Text(
-                        project.status,
-                        style: TextStyle(fontSize: 11),
                       ),
-                      padding: EdgeInsets.zero,
-                      labelPadding: EdgeInsets.symmetric(horizontal: 8),
-                      backgroundColor: _getStatusColor(project.status),
-                    ),
-                    onTap: () => _showProjectDetails(project),
-                  );
-                },
-              ),
+                      SizedBox(width: 4),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(project.status),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          project.status,
+                          style: TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Text(
+                    project.description,
+                    style: TextStyle(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => _showProjectDetails(project),
+                );
+              },
             ),
           ),
         ],

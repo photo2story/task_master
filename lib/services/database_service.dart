@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/project.dart';
 import '../config/database_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/services.dart';
 
 class DatabaseService {
   final String baseUrl = DatabaseConfig.projectsUrl;
@@ -179,6 +180,27 @@ class DatabaseService {
     } catch (e) {
       print('프로젝트 조회 에러: $e');
       rethrow;
+    }
+  }
+
+  Future<String> loadCsvData() async {
+    try {
+      final csvUrl = dotenv.env['CSV_URL'] ?? 
+        'https://raw.githubusercontent.com/photo2story/my-flutter-app/main/static/images/stock_market.csv';
+      
+      print('CSV 로드 시도: $csvUrl');
+      final response = await http.get(Uri.parse(csvUrl));
+      
+      if (response.statusCode == 200) {
+        print('CSV 로드 성공');
+        return response.body;
+      } else {
+        print('CSV 로드 실패: ${response.statusCode}');
+        throw Exception('CSV 로드 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('CSV 파일 로드 에러: $e');
+      throw e;
     }
   }
 } 

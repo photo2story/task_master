@@ -28,7 +28,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     _project = widget.project;
     _descriptionController = TextEditingController(text: _project.description);
     _procedureController = TextEditingController(text: _project.procedure);
-    _updateNotesController = TextEditingController(text: _project.updateNotes);
+    _updateNotesController = TextEditingController(text: _project.updateNotes ?? '');
     _status = _project.status;
     _startDate = _project.startDate;
     _projectName = _project.name;
@@ -61,7 +61,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       final refreshedProject = await context.read<ProjectService>().getProject(updatedProject.id);
       setState(() {
         _project = refreshedProject;
-        _updateNotesController.text = refreshedProject.updateNotes;
+        _updateNotesController.text = refreshedProject.updateNotes ?? '';
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,19 +73,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   // 저장 버튼으로 업데이트 (업무 내용, 업무 절차)
   Future<void> _updateWithSaveButton(
     Project updatedProject, 
-    String originalValue, 
+    String? originalValue,
     String newValue,
     String fieldName,
   ) async {
-    if (newValue != originalValue) {  // 변경사항이 있을 때만 저장
+    if (newValue != (originalValue ?? '')) {
       try {
         await context.read<ProjectService>().updateProject(updatedProject);
         final refreshedProject = await context.read<ProjectService>().getProject(updatedProject.id);
         setState(() {
           _project = refreshedProject;
-          // 업데이트 내역은 컨트롤러의 현재 값을 유지
           if (fieldName != '업데이트 내역') {
-            _updateNotesController.text = refreshedProject.updateNotes;
+            _updateNotesController.text = refreshedProject.updateNotes ?? '';
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -387,9 +386,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               hintText: '수정 내역을 입력하세요',
                             ),
                           )
-                        : Text(_project.updateNotes.isEmpty 
-                            ? '수정 내역이 없습니다.' 
-                            : _project.updateNotes),
+                        : Text(_project.updateNotes?.isEmpty ?? true 
+                            ? '업데이트 내역이 없습니다.' 
+                            : _project.updateNotes!),
                   ],
                 ),
               ),

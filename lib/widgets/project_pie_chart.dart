@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 class ProjectPieChart extends StatelessWidget {
   final Map<String, int> categoryStats;
@@ -19,65 +20,34 @@ class ProjectPieChart extends StatelessWidget {
       Colors.teal[200],
     ];
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('[분류]', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        SizedBox(height: 4),
-        SizedBox(
-          height: 80,
-          width: 80,
-          child: categoryStats.isEmpty
-              ? Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CustomPaint(
-                      size: Size.infinite,
-                      painter: _EmptyPieChartPainter(color: Colors.grey[200]!),
-                    ),
-                    Text(
-                      'No Plan',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                )
-              : CustomPaint(
+    return SizedBox(
+      height: 100,
+      width: 100,
+      child: categoryStats.isEmpty
+          ? Stack(
+              alignment: Alignment.center,
+              children: [
+                CustomPaint(
                   size: Size.infinite,
-                  painter: _PieChartPainter(
-                    categories: categoryStats.entries.toList(),
-                    colors: colors,
+                  painter: _EmptyPieChartPainter(color: Colors.grey[200]!),
+                ),
+                Text(
+                  'No Plan',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-        ),
-        SizedBox(height: 4),
-        if (categoryStats.isNotEmpty)
-          ...categoryStats.entries.map((entry) {
-            final index = categoryStats.keys.toList().indexOf(entry.key);
-            return Padding(
-              padding: EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    color: colors[index % colors.length],
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    '${entry.key} ${entry.value}',
-                    style: TextStyle(fontSize: 10),
-                  ),
-                ],
+              ],
+            )
+          : CustomPaint(
+              size: Size.infinite,
+              painter: _PieChartPainter(
+                categories: categoryStats.entries.toList(),
+                colors: colors,
               ),
-            );
-          }).toList(),
-      ],
+            ),
     );
   }
 }
@@ -108,6 +78,36 @@ class _PieChartPainter extends CustomPainter {
         sweepAngle,
         true,
         paint,
+      );
+      
+      final textAngle = startAngle + (sweepAngle / 2);
+      final textRadius = radius * 0.6;
+      final textX = center.dx + textRadius * cos(textAngle);
+      final textY = center.dy + textRadius * sin(textAngle);
+      
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: '${categories[i].key}\n${categories[i].value}',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            height: 1.2,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      );
+      
+      textPainter.layout(
+        maxWidth: radius,
+      );
+      textPainter.paint(
+        canvas,
+        Offset(
+          textX - (textPainter.width / 2),
+          textY - (textPainter.height / 2),
+        ),
       );
       
       startAngle += sweepAngle;
