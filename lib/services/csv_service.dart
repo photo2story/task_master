@@ -30,6 +30,8 @@ class CsvService {
           shouldParseNumbers: false,
           fieldDelimiter: ',',
           eol: '\n',
+          textDelimiter: '"',
+          textEndDelimiter: '"',
         );
         
         final List<List<dynamic>> csvTable = csvConverter.convert(rawData);
@@ -42,14 +44,21 @@ class CsvService {
 
         return csvTable.skip(1).map((row) {
           try {
+            final cleanRow = row.map((field) {
+              if (field == null) return '';
+              return field.toString()
+                  .trim()
+                  .replaceAll(RegExp(r'^"|"$'), '');
+            }).toList();
+
             return TaskTemplate(
-              category: row[0].toString().trim(),
-              subCategory: row[1].toString().trim(),
-              detail: row[2].toString().trim(),
-              description: row[3].toString().trim(),
-              manager: row[4].toString().trim(),
-              supervisor: row[5].toString().trim(),
-              procedure: row[6].toString().trim(),
+              category: cleanRow[0],
+              subCategory: cleanRow[1],
+              detail: cleanRow[2],
+              description: cleanRow[3],
+              manager: cleanRow[4],
+              supervisor: cleanRow[5],
+              procedure: cleanRow[6],
             );
           } catch (e) {
             print('행 변환 에러: $row');

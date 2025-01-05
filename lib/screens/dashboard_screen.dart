@@ -73,6 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SingleChildScrollView(
         child: isNarrowScreen
           ? Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 _buildCurrentMonthProjects(),
                 _buildUpcomingProjects(),
@@ -309,7 +310,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          Expanded(
+          Container(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
             child: ListView.builder(
               shrinkWrap: true,
               physics: AlwaysScrollableScrollPhysics(),

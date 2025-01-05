@@ -103,32 +103,48 @@ class ProjectService extends ChangeNotifier {
       print('CSV 변환 결과 행 수: ${rowsAsListOfValues.length}');
       
       if (rowsAsListOfValues.length > 1) {
-        // 첫 번째 행은 헤더이므로 건너뜀
         for (var i = 1; i < rowsAsListOfValues.length; i++) {
           try {
             final row = rowsAsListOfValues[i];
-            // 최소 필수 필드 수 확인
             if (row.length >= 13) {
-              final project = Project.fromCsv(row);
+              final cleanRow = row.map((field) {
+                if (field == null) return '';
+                return field.toString()
+                    .trim()
+                    .replaceAll(RegExp(r'^"|"$'), '');
+              }).toList();
+
+              final project = Project(
+                id: cleanRow[0],
+                name: cleanRow[1],
+                category: cleanRow[2],
+                subCategory: cleanRow[3],
+                description: cleanRow[4],
+                detail: cleanRow[5],
+                procedure: cleanRow[6],
+                startDate: DateTime.parse(cleanRow[7]),
+                status: cleanRow[8],
+                manager: cleanRow[9],
+                supervisor: cleanRow[10],
+                createdAt: DateTime.parse(cleanRow[11]),
+                updatedAt: DateTime.parse(cleanRow[12]),
+                updateNotes: cleanRow.length > 13 ? cleanRow[13] : '',
+              );
               projects.add(project);
               print('프로젝트 파싱 성공: ${project.name}');
-            } else {
-              print('행 데이터 불충분: ${row.length} columns');
             }
           } catch (e) {
             print('행 처리 중 오류: ${rowsAsListOfValues[i]}');
             print('오류 내용: $e');
-            continue;  // 오류가 있는 행은 건너뜀
+            continue;
           }
         }
       }
       
-      print('성공적으로 변환된 프로젝트 수: ${projects.length}');
       return projects;
-      
     } catch (e) {
       print('CSV 파싱 에러: $e');
-      return [];  // 오류 발생 시 빈 리스트 반환
+      return [];
     }
   }
 } 
