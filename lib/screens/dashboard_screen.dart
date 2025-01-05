@@ -24,7 +24,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadProjects() async {
-    await context.read<ProjectService>().loadProjects();
+    try {
+      await context.read<ProjectService>().loadProjects();
+    } catch (e) {
+      print('프로젝트 로드 에러: $e');
+      // 에러 처리 (예: 스낵바 표시)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('프로젝트 로드 중 오류가 발생했습니다')),
+      );
+    }
   }
 
   @override
@@ -34,12 +42,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Text('Task Master'),
         actions: [
           IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _loadProjects,
+            tooltip: '새로고침',
+          ),
+          IconButton(
             icon: Icon(Icons.list),
-            tooltip: '업무 목록',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => TaskTemplateScreen()),
             ),
+            tooltip: '업무 목록',
           ),
         ],
       ),
