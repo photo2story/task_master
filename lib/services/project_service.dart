@@ -7,10 +7,12 @@ import 'csv_service.dart';
 import 'package:csv/csv.dart';
 
 class ProjectService extends ChangeNotifier {
-  final CsvService _csvService = CsvService();
+  final CsvService _csvService;
   List<Project> _projects = [];
   List<Project> _cachedProjects = [];
   bool _isSyncing = false;
+
+  ProjectService(this._csvService);
 
   List<Project> get projects {
     if (_isSyncing) {

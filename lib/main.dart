@@ -8,6 +8,10 @@ import 'services/project_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/database_service.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'services/user_service.dart';
+import 'services/csv_service.dart';
+import 'screens/user_login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,22 +24,26 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
   ]);
 
+  final prefs = await SharedPreferences.getInstance();
+  final userService = UserService(prefs);
+  final csvService = CsvService(userService);
+  await csvService.initialize();
+  
   runApp(
     MultiProvider(
       providers: [
-        Provider(
-          create: (_) => DatabaseService(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => ProjectService(),
+        Provider<UserService>(create: (_) => userService),
+        Provider<CsvService>(create: (_) => csvService),
+        ChangeNotifierProvider<ProjectService>(
+          create: (context) => ProjectService(csvService),
         ),
       ],
-      child: TaskMasterApp(),
+      child: MyApp(),
     ),
   );
 }
 
-class TaskMasterApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -82,7 +90,9 @@ class TaskMasterApp extends StatelessWidget {
         const Locale('en', 'US'),
       ],
       locale: const Locale('ko', 'KR'),
-      home: DashboardScreen(),
+      home: context.watch<UserService>().isLoggedIn
+          ? DashboardScreen()
+          : UserLoginScreen(),
     );
   }
 }

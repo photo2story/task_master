@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/csv_service.dart';
 import '../models/task_template.dart';
 import 'project_create_screen.dart';
@@ -9,7 +10,7 @@ class TaskTemplateScreen extends StatefulWidget {
 }
 
 class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
-  final CsvService _csvService = CsvService();
+  late final CsvService _csvService;
   String? selectedCategory;
   List<String> categories = [];
   Map<String, List<TaskTemplate>> templatesByCategory = {};
@@ -21,9 +22,15 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
   bool isSearching = false;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _csvService = Provider.of<CsvService>(context);
+    _loadAllTemplates();
+  }
+
+  @override
   void initState() {
     super.initState();
-    _loadAllTemplates();
   }
 
   @override

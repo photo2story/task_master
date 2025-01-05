@@ -4,14 +4,35 @@ import 'package:http/http.dart' as http;
 import '../models/task_template.dart';
 import '../models/project.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show Platform, File, Directory;
+import 'user_service.dart';
 
 class CsvService {
   final String taskListUrl = 'https://raw.githubusercontent.com/photo2story/task_master/main/assets/task_list.csv';
-  final String projectListUrl = 'https://raw.githubusercontent.com/photo2story/task_master/main/assets/project_list.csv';
+  final String baseProjectListUrl = 'https://raw.githubusercontent.com/photo2story/task_master/main/assets/project_list.csv';
   final String githubToken = const String.fromEnvironment('GITHUB_TOKEN', defaultValue: '');
   final String owner = 'photo2story';
   final String repo = 'task_master';
-  
+  String _localDir;
+  final UserService _userService;
+
+  CsvService(this._userService) : _localDir = '';
+
+  Future<void> initialize() async {
+    final directory = await getApplicationDocumentsDirectory();
+    _localDir = directory.path;
+    print('로컬 저장소 경로: $_localDir');
+  }
+
+  String get _projectFileName {
+    final userName = _userService.userName;
+    return userName != null ? 'project_list_$userName.csv' : 'project_list.csv';
+  }
+
+  String get _localProjectFilePath => '$_localDir/$_projectFileName';
+
   // 기존 loadTaskTemplates() 메서드는 유지...
 
   // 업무 템플릿 로드 메서드 복원
@@ -77,14 +98,24 @@ class CsvService {
     }
   }
 
-  // GitHub에서 프로젝트 목록 가져오기
+  // 프로젝트 목록 가져오기 (로컬 우선, 없으면 기본 목록 사용)
   Future<List<Project>> fetchProjects() async {
     try {
-      print('\n프로젝트 목록 가져오기 시도:');
-      final response = await http.get(Uri.parse(projectListUrl));
+      final file = File(_localProjectFilePath);
+      
+      // 로컬 파일이 있으면 그것을 사용
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        return _parseCsvToProjects(content);
+      }
+      
+      // 없으면 기본 목록 가져와서 로컬에 저장
+      final response = await http.get(Uri.parse(baseProjectListUrl));
       if (response.statusCode == 200) {
+        await file.writeAsString(response.body);
         return _parseCsvToProjects(response.body);
       }
+      
       return [];
     } catch (e) {
       print('프로젝트 CSV 로드 에러: $e');
@@ -92,69 +123,19 @@ class CsvService {
     }
   }
 
-  // GitHub에 프로젝트 목록 업데이트
+  // 프로젝트 목록 업데이트 (로컬 파일만 업데이트)
   Future<bool> updateProjectsCsv(List<Project> projects) async {
     try {
-      print('\nGitHub CSV 업데이트 시도:');
+      final file = File(_localProjectFilePath);
       
-      // 1. 먼저 기존 프로젝트 목록을 가져옴
-      final existingProjects = await fetchProjects();
+      // CSV 형식으로 변환
+      final csv = _projectsToCsv(projects);
       
-      // 2. 새 프로젝트와 기존 프로젝트 합치기
-      final allProjects = [...existingProjects];
-      for (var project in projects) {
-        // 이미 존재하는 프로젝트는 업데이트, 없는 것은 추가
-        final index = allProjects.indexWhere((p) => p.id == project.id);
-        if (index >= 0) {
-          allProjects[index] = project;
-        } else {
-          allProjects.add(project);
-        }
-      }
-
-      // 3. CSV 헤더
-      final header = [
-        'id', 'name', 'category', 'subCategory', 'description', 
-        'detail', 'procedure', 'start_date', 'status', 'manager',
-        'supervisor', 'created_at', 'updated_at', 'update_notes'
-      ];
-
-      // 4. 모든 프로젝트를 CSV 행으로 변환
-      final rows = allProjects.map((project) => [
-        project.id,
-        project.name,
-        project.category,
-        project.subCategory,
-        project.description,
-        project.detail,
-        project.procedure,
-        project.startDate.toIso8601String(),
-        project.status,
-        project.manager,
-        project.supervisor,
-        project.createdAt.toIso8601String(),
-        project.updatedAt.toIso8601String(),
-        project.updateNotes ?? ''
-      ]).toList();
-
-      // 5. 헤더와 데이터 행을 합침
-      final allRows = [header, ...rows];
-
-      // 6. CSV 문자열로 변환
-      final csv = const ListToCsvConverter(
-        fieldDelimiter: ',',
-        textDelimiter: '"',
-        textEndDelimiter: '"',
-      ).convert(allRows);
-
-      // 7. GitHub API를 통해 파일 업데이트
-      final response = await _updateGitHubFile(
-        path: 'assets/project_list.csv',
-        content: csv,
-        message: 'Update project list'
-      );
-
-      return response.statusCode == 200;
+      // 로컬 파일에 저장
+      await file.writeAsString(csv);
+      print('프로젝트 저장 완료: $_localProjectFilePath');
+      
+      return true;
     } catch (e) {
       print('CSV 업데이트 에러: $e');
       return false;
@@ -304,6 +285,42 @@ class CsvService {
     } catch (e) {
       print('GitHub 파일 업데이트 에러: $e');
       rethrow;
+    }
+  }
+
+  // 저장 경로 확인 메서드
+  String getStorageLocation() {
+    if (Platform.isWindows) {
+      return 'Windows 저장 경로: $_localDir';
+    } else if (Platform.isMacOS) {
+      return 'macOS 저장 경로: $_localDir';
+    } else if (Platform.isLinux) {
+      return 'Linux 저장 경로: $_localDir';
+    } else if (Platform.isAndroid) {
+      return 'Android 저장 경로: $_localDir';
+    } else if (Platform.isIOS) {
+      return 'iOS 저장 경로: $_localDir';
+    }
+    return '알 수 없는 플랫폼: $_localDir';
+  }
+
+  // 파일 존재 여부 확인
+  Future<bool> projectFileExists() async {
+    final file = File(_localProjectFilePath);
+    return await file.exists();
+  }
+
+  // 파일 내용 확인
+  Future<String?> readProjectFile() async {
+    try {
+      final file = File(_localProjectFilePath);
+      if (await file.exists()) {
+        return await file.readAsString();
+      }
+      return null;
+    } catch (e) {
+      print('파일 읽기 에러: $e');
+      return null;
     }
   }
 } 

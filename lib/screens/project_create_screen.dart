@@ -18,7 +18,7 @@ class ProjectCreateScreen extends StatefulWidget {
 
 class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _csvService = CsvService();
+  late final CsvService _csvService;
   
   String _selectedCategory = '';
   String _selectedSubCategory = '';
@@ -38,14 +38,18 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
   void initState() {
     super.initState();
     if (widget.template != null) {
-      // 전달받은 템플릿이 있으면 사용
       _selectedTemplate = widget.template;
       _updateFromTemplate();
     } else {
-      // 없으면 CSV에서 로드
       _loadTemplate();
     }
     _updateEndDate();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _csvService = Provider.of<CsvService>(context);
   }
 
   // CSV에서 템플릿 로드

@@ -102,6 +102,44 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
+  // 삭제 확인 다이얼로그
+  void _showDeleteConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('프로젝트 삭제'),
+        content: Text('정말로 이 프로젝트를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await context.read<ProjectService>().deleteProject(widget.project.id);
+                Navigator.pop(context); // 다이얼로그 닫기
+                Navigator.pop(context); // 상세 화면 닫기
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('프로젝트가 삭제되었습니다')),
+                );
+              } catch (e) {
+                Navigator.pop(context); // 다이얼로그 닫기
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('프로젝트 삭제 실패: $e')),
+                );
+              }
+            },
+            child: Text('삭제'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,6 +155,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             onPressed: () => setState(() => _isEditing = !_isEditing),
           ),
           SizedBox(width: 16),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: () => _showDeleteConfirmation(context),
+          ),
         ],
       ),
       body: SingleChildScrollView(
