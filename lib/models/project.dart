@@ -5,13 +5,13 @@ class Project {
   final String name;
   final String category;
   final String subCategory;
-  final String detail;
   final String description;
-  final String manager;
-  final String supervisor;
+  final String detail;
   final String procedure;
   final DateTime startDate;
   final String status;
+  final String manager;
+  final String supervisor;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String updateNotes;
@@ -21,16 +21,16 @@ class Project {
     required this.name,
     required this.category,
     required this.subCategory,
-    required this.detail,
     required this.description,
-    required this.manager,
-    required this.supervisor,
+    required this.detail,
     required this.procedure,
     required this.startDate,
     required this.status,
+    required this.manager,
+    required this.supervisor,
     required this.createdAt,
     required this.updatedAt,
-    this.updateNotes = '',
+    required this.updateNotes,
   });
 
   Project copyWith({
@@ -66,4 +66,21 @@ class Project {
       updateNotes: updateNotes ?? this.updateNotes,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'category': category,
+    'subCategory': subCategory,
+    'description': description,
+    'detail': detail,
+    'procedure': procedure,
+    'startDate': startDate.toIso8601String(),
+    'status': status,
+    'manager': manager,
+    'supervisor': supervisor,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+    'updateNotes': updateNotes,
+  };
 } 

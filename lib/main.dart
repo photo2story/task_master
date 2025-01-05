@@ -17,9 +17,7 @@ Future<void> main() async {
           create: (_) => DatabaseService(),
         ),
         ChangeNotifierProvider(
-          create: (context) => ProjectService(
-            context.read<DatabaseService>(),
-          ),
+          create: (context) => ProjectService(),
         ),
       ],
       child: TaskMasterApp(),

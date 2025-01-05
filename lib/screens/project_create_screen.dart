@@ -216,6 +216,7 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
         status: _status,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        updateNotes: '',
       );
 
       try {

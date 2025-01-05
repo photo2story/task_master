@@ -49,3 +49,6 @@ lib/config/database_config.dart
 
 # Environment variables
 .env
+
+# assets 폴더는 제외하지 않도록 주석 처리하거나 제거
+# /assets/
