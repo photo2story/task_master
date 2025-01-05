@@ -326,7 +326,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('업데 절차', style: Theme.of(context).textTheme.titleLarge),
+                        Text('업무 절차', style: Theme.of(context).textTheme.titleLarge),
                         if (_isEditing)
                           IconButton(
                             icon: Icon(Icons.save),
