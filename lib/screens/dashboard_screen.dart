@@ -98,10 +98,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           Consumer<ProjectService>(
             builder: (context, projectService, _) {
-              final currentMonthProjects = projectService.projects.where((p) =>
-                p.startDate.year == DateTime.now().year &&
-                p.startDate.month == DateTime.now().month
-              ).toList();
+              final currentMonthProjects = projectService.projects
+                  .where((p) =>
+                    p.startDate.year == DateTime.now().year &&
+                    p.startDate.month == DateTime.now().month
+                  )
+                  .toList()
+                  ..sort((a, b) {
+                    if (a.status == '완료' && b.status != '완료') return 1;
+                    if (a.status != '완료' && b.status == '완료') return -1;
+                    return a.startDate.compareTo(b.startDate);
+                  });
 
               return currentMonthProjects.isEmpty
                   ? Center(child: Text('이번 달 프로젝트가 없습니다'))
@@ -127,16 +134,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFFFFE5B4),
+                                          color: project.status == '완료'
+                                              ? Color(0xFFFFE5B4).withOpacity(0.5)
+                                              : Color(0xFFFFE5B4),
                                         ),
                                       ),
                                       TextSpan(
                                         text: project.name.substring(8),
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: Theme.of(context).brightness == Brightness.dark
-                                              ? Colors.grey[300]
-                                              : Colors.black87,
+                                          color: project.status == '완료'
+                                              ? (Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.grey[600]
+                                                  : Colors.grey[400])
+                                              : (Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.grey[300]
+                                                  : Colors.black87),
                                         ),
                                       ),
                                     ],
@@ -148,6 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               SizedBox(width: 4),
                               Container(
                                 padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                width: 48,
                                 decoration: BoxDecoration(
                                   color: _getStatusColor(project.status),
                                   borderRadius: BorderRadius.circular(4),
@@ -155,6 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Text(
                                   project.status,
                                   style: TextStyle(fontSize: 11),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ],
@@ -163,7 +178,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             project.description,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFFFFB5B5),
+                              color: project.status == '완료'
+                                  ? Color(0xFFFFB5B5).withOpacity(0.5)
+                                  : Color(0xFFFFB5B5),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -181,10 +198,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildUpcomingProjects() {
     final projects = context.watch<ProjectService>().projects;
-    final currentMonthProjects = projects.where((p) => 
-      p.startDate.year == _focusedDay.year && 
-      p.startDate.month == _focusedDay.month
-    ).toList();
+    final currentMonthProjects = projects
+        .where((p) => 
+          p.startDate.year == _focusedDay.year && 
+          p.startDate.month == _focusedDay.month
+        )
+        .toList()
+        ..sort((a, b) {
+          if (a.status == '완료' && b.status != '완료') return 1;
+          if (a.status != '완료' && b.status == '완료') return -1;
+          return a.startDate.compareTo(b.startDate);
+        });
     
     Map<String, int> categoryStats = {};
     for (var project in currentMonthProjects) {
@@ -240,7 +264,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           setState(() {
                             _focusedDay = focusedDay;
                           });
-                          _loadProjects();
                         },
                         eventLoader: (day) {
                           return projects.where((p) => isSameDay(p.startDate, day)).toList();
@@ -385,16 +408,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFFFFE5B4),
+                                  color: project.status == '완료'
+                                      ? Color(0xFFFFE5B4).withOpacity(0.5)
+                                      : Color(0xFFFFE5B4),
                                 ),
                               ),
                               TextSpan(
                                 text: project.name.substring(8),
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Theme.of(context).brightness == Brightness.dark
-                                      ? Colors.grey[300]
-                                      : Colors.black87,
+                                  color: project.status == '완료'
+                                      ? (Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.grey[600]
+                                          : Colors.grey[400])
+                                      : (Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.grey[300]
+                                          : Colors.black87),
                                 ),
                               ),
                             ],
@@ -406,6 +435,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       SizedBox(width: 4),
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        width: 48,
                         decoration: BoxDecoration(
                           color: _getStatusColor(project.status),
                           borderRadius: BorderRadius.circular(4),
@@ -413,6 +443,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Text(
                           project.status,
                           style: TextStyle(fontSize: 11),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],
@@ -421,7 +452,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     project.description,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFFFFB5B5),
+                      color: project.status == '완료'
+                          ? Color(0xFFFFB5B5).withOpacity(0.5)
+                          : Color(0xFFFFB5B5),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

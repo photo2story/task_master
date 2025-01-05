@@ -79,17 +79,15 @@ class CsvService {
 
   // GitHub에서 프로젝트 목록 가져오기
   Future<List<Project>> fetchProjects() async {
-    // 모든 프로젝트를 로드합니다 (날짜 필터링 없음)
     try {
       print('\n프로젝트 목록 가져오기 시도:');
       final response = await http.get(Uri.parse(projectListUrl));
       if (response.statusCode == 200) {
-        final projects = _parseCsvToProjects(response.body);
-        print('전체 로드된 프로젝트 수: ${projects.length}');
-        return projects;
+        return _parseCsvToProjects(response.body);
       }
       return [];
     } catch (e) {
+      print('프로젝트 CSV 로드 에러: $e');
       return [];
     }
   }
@@ -168,13 +166,16 @@ class CsvService {
     try {
       print('\nCSV 파싱 시도:');
       
+      // 줄바꿈 문자 정규화
+      csvData = csvData.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+      
       final csvConverter = CsvToListConverter(
         shouldParseNumbers: false,
         fieldDelimiter: ',',
         eol: '\n',
         textDelimiter: '"',
         textEndDelimiter: '"',
-        allowInvalid: false,
+        allowInvalid: true,  // 잘못된 형식 허용
       );
       
       final List<List<dynamic>> csvTable = csvConverter.convert(csvData);
@@ -186,13 +187,9 @@ class CsvService {
       }
       
       print('헤더: ${csvTable[0]}');
-      if (csvTable.length > 1) {
-        print('첫 번째 데이터 행: ${csvTable[1]}');
-      }
       
-      final projects = csvTable.skip(1).map((row) {
+      return csvTable.skip(1).map((row) {
         try {
-          print('행 처리 중: $row');
           // 각 필드의 데이터 정제
           final cleanRow = row.map((field) {
             if (field == null) return '';
@@ -201,6 +198,11 @@ class CsvService {
                 .replaceAll(RegExp(r'^"|"$'), '')  // 앞뒤 쌍따옴표 제거
                 .replaceAll('""', '"');            // 이스케이프된 쌍따옴표 처리
           }).toList();
+
+          // 필요한 필드 수만큼 빈 문자열로 채우기
+          while (cleanRow.length < 14) {
+            cleanRow.add('');
+          }
 
           return Project(
             id: cleanRow[0],
@@ -216,17 +218,18 @@ class CsvService {
             supervisor: cleanRow[10],
             createdAt: DateTime.parse(cleanRow[11]),
             updatedAt: DateTime.parse(cleanRow[12]),
-            updateNotes: cleanRow.length > 13 ? cleanRow[13] : '',
+            updateNotes: cleanRow[13],
           );
         } catch (e) {
           print('행 변환 에러: $row');
           print('에러 내용: $e');
-          rethrow;
+          return null;
         }
-      }).toList();
+      })
+      .where((project) => project != null)  // null 항목 제거
+      .cast<Project>()                      // Project 타입으로 캐스팅
+      .toList();
       
-      print('변환된 프로젝트 수: ${projects.length}');
-      return projects;
     } catch (e) {
       print('CSV 파싱 에러: $e');
       return [];
