@@ -98,6 +98,7 @@ class ProjectService extends ChangeNotifier {
         textDelimiter: '"',
         textEndDelimiter: '"',
         shouldParseNumbers: false,
+        allowInvalid: false,
       ).convert(csvData);
       
       print('CSV 변환 결과 행 수: ${rowsAsListOfValues.length}');
@@ -111,7 +112,8 @@ class ProjectService extends ChangeNotifier {
                 if (field == null) return '';
                 return field.toString()
                     .trim()
-                    .replaceAll(RegExp(r'^"|"$'), '');
+                    .replaceAll(RegExp(r'^"|"$'), '')
+                    .replaceAll('""', '"');
               }).toList();
 
               final project = Project(

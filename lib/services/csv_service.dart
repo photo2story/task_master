@@ -32,6 +32,7 @@ class CsvService {
           eol: '\n',
           textDelimiter: '"',
           textEndDelimiter: '"',
+          allowInvalid: false,
         );
         
         final List<List<dynamic>> csvTable = csvConverter.convert(rawData);
@@ -48,7 +49,8 @@ class CsvService {
               if (field == null) return '';
               return field.toString()
                   .trim()
-                  .replaceAll(RegExp(r'^"|"$'), '');
+                  .replaceAll(RegExp(r'^"|"$'), '')
+                  .replaceAll('""', '"');
             }).toList();
 
             return TaskTemplate(
