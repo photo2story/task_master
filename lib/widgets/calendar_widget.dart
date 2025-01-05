@@ -13,86 +13,99 @@ class _CalendarWidgetState extends State<CalendarWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '일정',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                DropdownButton<CalendarFormat>(
-                  value: _calendarFormat,
-                  items: [
-                    DropdownMenuItem(
-                      value: CalendarFormat.month,
-                      child: Text('월'),
-                    ),
-                    DropdownMenuItem(
-                      value: CalendarFormat.week,
-                      child: Text('주'),
-                    ),
-                    DropdownMenuItem(
-                      value: CalendarFormat.twoWeeks,
-                      child: Text('2주'),
-                    ),
-                  ],
-                  onChanged: (format) {
-                    if (format != null) {
-                      setState(() {
-                        _calendarFormat = format;
-                      });
-                    }
-                  },
-                ),
-              ],
+    return SizedBox(
+      width: 160,
+      child: Card(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '일정',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  DropdownButton<CalendarFormat>(
+                    isDense: true,
+                    value: _calendarFormat,
+                    items: [
+                      DropdownMenuItem(
+                        value: CalendarFormat.month,
+                        child: Text('월'),
+                      ),
+                      DropdownMenuItem(
+                        value: CalendarFormat.week,
+                        child: Text('주'),
+                      ),
+                      DropdownMenuItem(
+                        value: CalendarFormat.twoWeeks,
+                        child: Text('2주'),
+                      ),
+                    ],
+                    onChanged: (format) {
+                      if (format != null) {
+                        setState(() {
+                          _calendarFormat = format;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          TableCalendar(
-            firstDay: DateTime.utc(2024, 1, 1),
-            lastDay: DateTime.utc(2025, 12, 31),
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
-            selectedDayPredicate: (day) {
-              return isSameDay(_selectedDay, day);
-            },
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
+            TableCalendar(
+              firstDay: DateTime.utc(2024, 1, 1),
+              lastDay: DateTime.utc(2025, 12, 31),
+              focusedDay: _focusedDay,
+              calendarFormat: _calendarFormat,
+              availableGestures: AvailableGestures.none,
+              selectedDayPredicate: (day) {
+                return isSameDay(_selectedDay, day);
+              },
+              onDaySelected: (selectedDay, focusedDay) {
+                setState(() {
+                  _selectedDay = selectedDay;
+                  _focusedDay = focusedDay;
+                });
+              },
+              onFormatChanged: (format) {
+                setState(() {
+                  _calendarFormat = format;
+                });
+              },
+              onPageChanged: (focusedDay) {
                 _focusedDay = focusedDay;
-              });
-            },
-            onFormatChanged: (format) {
-              setState(() {
-                _calendarFormat = format;
-              });
-            },
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-            },
-            // 캘린더 스타일 설정
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              weekendTextStyle: TextStyle(color: Colors.red),
+              },
+              calendarStyle: CalendarStyle(
+                outsideDaysVisible: false,
+                weekendTextStyle: TextStyle(color: Colors.red, fontSize: 11),
+                defaultTextStyle: TextStyle(fontSize: 11),
+                selectedTextStyle: TextStyle(fontSize: 11, color: Colors.white),
+                todayTextStyle: TextStyle(fontSize: 11),
+                cellMargin: EdgeInsets.zero,
+                cellPadding: EdgeInsets.all(1),
+              ),
+              headerStyle: HeaderStyle(
+                formatButtonVisible: false,
+                titleCentered: true,
+                titleTextStyle: TextStyle(fontSize: 12),
+                leftChevronIcon: Icon(Icons.chevron_left, size: 14),
+                rightChevronIcon: Icon(Icons.chevron_right, size: 14),
+                headerPadding: EdgeInsets.symmetric(vertical: 2),
+              ),
+              weekendDays: [DateTime.saturday, DateTime.sunday],
+              daysOfWeekStyle: DaysOfWeekStyle(
+                weekdayStyle: TextStyle(fontSize: 10),
+                weekendStyle: TextStyle(fontSize: 10, color: Colors.red),
+              ),
+              daysOfWeekHeight: 16,
+              rowHeight: 18,
             ),
-            // 헤더 스타일 설정
-            headerStyle: HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-            ),
-            // 주말 표시
-            weekendDays: [DateTime.saturday, DateTime.sunday],
-            // 한글 요일 표시
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: Colors.black),
-              weekendStyle: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

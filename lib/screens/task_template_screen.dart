@@ -4,26 +4,6 @@ import '../models/task_template.dart';
 import 'project_create_screen.dart';
 
 class TaskTemplateScreen extends StatelessWidget {
-  final _csvService = CsvService();
-
-  // 템플릿을 트리 구조로 변환
-  Map<String, Map<String, List<TaskTemplate>>> _organizeTemplates(List<TaskTemplate> templates) {
-    Map<String, Map<String, List<TaskTemplate>>> tree = {};
-    
-    for (var template in templates) {
-      // 대분류 (예: 인사, 급여/세금)
-      tree.putIfAbsent(template.category, () => {});
-      
-      // 중분류 (예: 채용, 퇴사)
-      tree[template.category]!.putIfAbsent(template.subCategory, () => []);
-      
-      // 상세 업무 추가
-      tree[template.category]![template.subCategory]!.add(template);
-    }
-    
-    return tree;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,7 +11,7 @@ class TaskTemplateScreen extends StatelessWidget {
         title: Text('업무 목록'),
       ),
       body: FutureBuilder<List<TaskTemplate>>(
-        future: _csvService.loadTaskTemplates(),
+        future: CsvService().loadTaskTemplates(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -93,5 +73,17 @@ class TaskTemplateScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Map<String, Map<String, List<TaskTemplate>>> _organizeTemplates(List<TaskTemplate> templates) {
+    Map<String, Map<String, List<TaskTemplate>>> tree = {};
+    
+    for (var template in templates) {
+      tree.putIfAbsent(template.category, () => {});
+      tree[template.category]!.putIfAbsent(template.subCategory, () => []);
+      tree[template.category]![template.subCategory]!.add(template);
+    }
+    
+    return tree;
   }
 } 
