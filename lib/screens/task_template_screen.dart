@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../services/csv_service.dart';
+import '../services/project_service.dart';
 import '../models/task_template.dart';
 import '../models/project.dart';
-import 'project_create_screen.dart';
 import 'project_detail_screen.dart';
 
 class TaskTemplateScreen extends StatefulWidget {
@@ -95,6 +96,51 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
     } catch (e) {
       print('템플릿 로드 에러: $e');
       setState(() => isLoading = false);
+    }
+  }
+
+  void _createProject(TaskTemplate template) async {
+    try {
+      final now = DateTime.now();
+      
+      final project = Project(
+        id: const Uuid().v4(),
+        name: '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
+             '${template.category}_${template.subCategory}_${template.detail}',
+        category: template.category,
+        subCategory: template.subCategory,
+        description: template.description,
+        detail: template.detail,
+        procedure: template.procedure,
+        startDate: now,
+        endDate: now,
+        status: '진행중',
+        manager: template.manager,
+        supervisor: template.supervisor,
+        createdAt: now,
+        updatedAt: now,
+        updateNotes: '프로젝트 생성',
+      );
+
+      await context.read<ProjectService>().createProject(project);
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProjectDetailScreen(
+              project: project,
+              isNewProject: true,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('프로젝트 생성 실패: $e')),
+        );
+      }
     }
   }
 
@@ -316,12 +362,7 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
               SizedBox(height: 8),
               Center(
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProjectCreateScreen(template: template),
-                    ),
-                  ),
+                  onPressed: () => _createProject(template),
                   icon: Icon(Icons.add, size: 18),
                   label: Text('프로젝트 생성'),
                   style: ElevatedButton.styleFrom(

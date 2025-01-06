@@ -9,6 +9,7 @@ class Project {
   final String detail;
   final String procedure;
   final DateTime startDate;
+  final DateTime? endDate;
   final String status;
   final String manager;
   final String supervisor;
@@ -25,6 +26,7 @@ class Project {
     required this.detail,
     required this.procedure,
     required this.startDate,
+    this.endDate,
     required this.status,
     required this.manager,
     required this.supervisor,
@@ -38,13 +40,14 @@ class Project {
     String? name,
     String? category,
     String? subCategory,
-    String? detail,
     String? description,
-    String? manager,
-    String? supervisor,
+    String? detail,
     String? procedure,
     DateTime? startDate,
+    DateTime? endDate,
     String? status,
+    String? manager,
+    String? supervisor,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? updateNotes,
@@ -54,13 +57,14 @@ class Project {
       name: name ?? this.name,
       category: category ?? this.category,
       subCategory: subCategory ?? this.subCategory,
-      detail: detail ?? this.detail,
       description: description ?? this.description,
-      manager: manager ?? this.manager,
-      supervisor: supervisor ?? this.supervisor,
+      detail: detail ?? this.detail,
       procedure: procedure ?? this.procedure,
       startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
       status: status ?? this.status,
+      manager: manager ?? this.manager,
+      supervisor: supervisor ?? this.supervisor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       updateNotes: updateNotes ?? this.updateNotes,

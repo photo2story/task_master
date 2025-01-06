@@ -6,193 +6,101 @@ import 'package:uuid/uuid.dart';
 import 'csv_service.dart';
 import 'package:csv/csv.dart';
 
-class ProjectService extends ChangeNotifier {
+class ProjectService with ChangeNotifier {
   final CsvService _csvService;
   List<Project> _projects = [];
-  List<Project> _cachedProjects = [];
-  bool _isSyncing = false;
+  bool _isLoading = false;
 
   ProjectService(this._csvService);
 
-  List<Project> get projects {
-    if (_isSyncing) {
-      return _cachedProjects;
-    }
-    // 캐시가 비어있으면 현재 프로젝트 목록으로 초기화
-    if (_cachedProjects.isEmpty) {
-      _cachedProjects = [..._projects];
-    }
-    return _projects;
-  }
+  List<Project> get projects => _projects;
+  bool get isLoading => _isLoading;
 
-  bool get isSyncing => _isSyncing;
-
-  Future<void> loadProjects() async {
-    try {
-      final projects = await _csvService.fetchProjects();
-      
-      // 날짜순으로 정렬 (startDate 기준)
-      projects.sort((a, b) => a.startDate.compareTo(b.startDate));
-      
-      _projects = projects;
-      _cachedProjects = [...projects];  // 캐시 초기화 추가
-      notifyListeners();
-    } catch (e) {
-      print('프로젝트 로드 에러: $e');
-      rethrow;
-    }
-  }
-
+  // 프로젝트 생성
   Future<void> createProject(Project project) async {
     try {
-      // 1. 캐시에 즉시 추가하고 UI 업데이트
-      _cachedProjects = [..._projects, project];  // 기존 프로젝트 + 새 프로젝트
-      _isSyncing = true;
+      // 메모리에 추가
+      _projects = [..._projects, project];
       notifyListeners();
 
-      // 2. GitHub에 비동기로 저장
-      await _syncToGitHub(() async {
-        _projects = [..._projects, project];
-        final success = await _csvService.updateProjectsCsv(_projects);
-        if (!success) throw Exception('프로젝트 저장 실패');
-      });
-
+      // CSV 파일 업데이트
+      await _csvService.updateProjectsCsv(_projects);
     } catch (e) {
-      // 3. 실패 시 캐시 롤백
-      _cachedProjects = [..._projects];
-      _isSyncing = false;
+      // 실패 시 롤백
+      _projects.removeLast();
       notifyListeners();
+      print('프로젝트 생성 에러: $e');
       rethrow;
     }
   }
 
-  Future<void> updateProject(Project project) async {
+  // 프로젝트 업데이트
+  Future<void> updateProject(Project updatedProject) async {
     try {
-      // 1. 캐시에 즉시 업데이트하고 UI 업데이트
-      final cacheIndex = _cachedProjects.indexWhere((p) => p.id == project.id);
-      if (cacheIndex != -1) {
-        _cachedProjects[cacheIndex] = project;
-        _isSyncing = true;
+      final index = _projects.indexWhere((p) => p.id == updatedProject.id);
+      if (index != -1) {
+        // 메모리 캐시 업데이트
+        _projects[index] = updatedProject;
         notifyListeners();
-
-        // 2. GitHub에 비동기로 저장
-        await _syncToGitHub(() async {
-          final index = _projects.indexWhere((p) => p.id == project.id);
-          if (index != -1) {
-            _projects[index] = project;
-            final success = await _csvService.updateProjectsCsv(_projects);
-            if (!success) throw Exception('프로젝트 업데이트 실패');
-          }
-        });
+        
+        // CSV 파일 업데이트
+        await _csvService.updateProjectsCsv(_projects);
+      } else {
+        throw Exception('업데이트할 프로젝트를 찾을 수 없습니다');
       }
     } catch (e) {
-      // 3. 실패 시 캐시 롤백
-      _cachedProjects = [..._projects];
-      _isSyncing = false;
-      notifyListeners();
+      print('프로젝트 업데이트 에러: $e');
       rethrow;
     }
   }
 
+  // 프로젝트 삭제
   Future<void> deleteProject(String projectId) async {
     try {
-      // 1. 캐시에서 즉시 삭제하고 UI 업데이트
-      _cachedProjects.removeWhere((p) => p.id == projectId);
-      _isSyncing = true;
+      _projects.removeWhere((p) => p.id == projectId);
       notifyListeners();
-
-      // 2. GitHub에 비동기로 저장
-      await _syncToGitHub(() async {
-        _projects.removeWhere((p) => p.id == projectId);
-        final success = await _csvService.updateProjectsCsv(_projects);
-        if (!success) throw Exception('프로젝트 삭제 실패');
-      });
-
+      await _csvService.updateProjectsCsv(_projects);
     } catch (e) {
-      // 3. 실패 시 캐시 롤백
-      _cachedProjects = [..._projects];
-      _isSyncing = false;
-      notifyListeners();
+      print('프로젝트 삭제 에러: $e');
       rethrow;
     }
   }
 
-  Future<Project> getProject(String projectId) async {
-    return _projects.firstWhere((p) => p.id == projectId);
-  }
-
-  Future<List<Project>> _parseProjects(String csvData) async {
+  // 프로젝트 조회
+  Future<Project> getProject(String id) async {
     try {
-      List<Project> projects = [];
-      List<List<dynamic>> rowsAsListOfValues = const CsvToListConverter(
-        fieldDelimiter: ',',
-        eol: '\n',
-        textDelimiter: '"',
-        textEndDelimiter: '"',
-        shouldParseNumbers: false,
-        allowInvalid: false,
-      ).convert(csvData);
-      
-      print('CSV 변환 결과 행 수: ${rowsAsListOfValues.length}');
-      
-      if (rowsAsListOfValues.length > 1) {
-        for (var i = 1; i < rowsAsListOfValues.length; i++) {
-          try {
-            final row = rowsAsListOfValues[i];
-            if (row.length >= 13) {
-              final cleanRow = row.map((field) {
-                if (field == null) return '';
-                return field.toString()
-                    .trim()
-                    .replaceAll(RegExp(r'^"|"$'), '')
-                    .replaceAll('""', '"');
-              }).toList();
-
-              final project = Project(
-                id: cleanRow[0],
-                name: cleanRow[1],
-                category: cleanRow[2],
-                subCategory: cleanRow[3],
-                description: cleanRow[4],
-                detail: cleanRow[5],
-                procedure: cleanRow[6],
-                startDate: DateTime.parse(cleanRow[7]),
-                status: cleanRow[8],
-                manager: cleanRow[9],
-                supervisor: cleanRow[10],
-                createdAt: DateTime.parse(cleanRow[11]),
-                updatedAt: DateTime.parse(cleanRow[12]),
-                updateNotes: cleanRow.length > 13 ? cleanRow[13] : '',
-              );
-              projects.add(project);
-              print('프로젝트 파싱 성공: ${project.name}');
-            }
-          } catch (e) {
-            print('행 처리 중 오류: ${rowsAsListOfValues[i]}');
-            print('오류 내용: $e');
-            continue;
-          }
-        }
-      }
-      
-      return projects;
+      // 메모리 캐시에서 프로젝트 찾기
+      final project = _projects.firstWhere(
+        (p) => p.id == id,
+        orElse: () => throw Exception('프로젝트를 찾을 수 없습니다: $id'),
+      );
+      return project;
     } catch (e) {
-      print('CSV 파싱 에러: $e');
-      return [];
+      print('프로젝트 조회 에러: $e');
+      // 프로젝트를 찾지 못한 경우 원본 프로젝트 반환
+      return _projects.firstWhere((p) => p.id == id);
     }
   }
 
-  // GitHub와 동기화하는 헬퍼 메서드
-  Future<void> _syncToGitHub(Future<void> Function() action) async {
+  // 프로젝트 목록 로드
+  Future<void> loadProjects() async {
+    if (_isLoading) return;
+    
     try {
-      await action();
-      // 성공 시 캐시를 현재 프로젝트 목록으로 업데이트
-      _cachedProjects = [..._projects];
-      _isSyncing = false;
+      _isLoading = true;
+      notifyListeners();
+
+      _projects = await _csvService.fetchProjects();
+      
+      // 날짜순 정렬
+      _projects.sort((a, b) => a.startDate.compareTo(b.startDate));
+      
       notifyListeners();
     } catch (e) {
-      print('GitHub 동기화 에러: $e');
-      rethrow;
+      print('프로젝트 목록 로드 에러: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 } 

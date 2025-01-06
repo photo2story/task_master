@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/project.dart';
 import '../services/project_service.dart';
+import '../widgets/calendar_widget.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final Project project;
+  final bool isNewProject;
 
-  const ProjectDetailScreen({super.key, required this.project});
+  const ProjectDetailScreen({
+    super.key, 
+    required this.project,
+    this.isNewProject = false,
+  });
 
   @override
   State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
@@ -20,7 +26,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   late TextEditingController _updateNotesController;
   late String _status;
   late DateTime _startDate;
+  late DateTime? _endDate;
   late String _projectName;
+
+  // 상태별 아이콘 정의를 위한 맵 추가
+  final Map<String, IconData> statusIcons = {
+    '진행중': Icons.play_circle_outline,
+    '완료': Icons.check_circle_outline,
+    '보류': Icons.pause_circle_outline,
+  };
+
+  // 상태별 색상 정의
+  final Map<String, Color> statusColors = {
+    '진행중': Color(0xFF40A9FF),
+    '완료': Colors.green,
+    '보류': Colors.orange,
+  };
 
   @override
   void initState() {
@@ -31,7 +52,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     _updateNotesController = TextEditingController(text: _project.updateNotes ?? '');
     _status = _project.status;
     _startDate = _project.startDate;
+    _endDate = _project.endDate;
     _projectName = _project.name;
+    
+    // 새로운 프로젝트인 경우 자동으로 수정 모드로 전환
+    if (widget.isNewProject) {
+      _isEditing = true;
+    }
   }
 
   // 날짜 포맷 메서드 추가
@@ -140,11 +167,134 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     );
   }
 
+  // 종료일 선택 다이얼로그
+  Future<void> _selectEndDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate ?? DateTime.now(),
+      firstDate: _startDate,
+      lastDate: DateTime(2030),
+    );
+
+    if (picked != null && mounted) {
+      final oldEndDate = _endDate != null ? _formatDate(_endDate!) : '미정';
+      _addUpdateNote('종료일 $oldEndDate → ${_formatDate(picked)} 변경');
+
+      final updatedProject = _project.copyWith(
+        endDate: picked,
+        updateNotes: _updateNotesController.text,
+        updatedAt: DateTime.now(),
+      );
+
+      await _saveChanges(updatedProject);
+      setState(() => _endDate = picked);
+    }
+  }
+
+  // 종료일 제거 메서드 추가
+  Future<void> _removeEndDate(BuildContext context) async {
+    final oldEndDate = _endDate != null ? _formatDate(_endDate!) : '미정';
+    _addUpdateNote('종료일 $oldEndDate → 미정 변경');
+
+    final updatedProject = _project.copyWith(
+      endDate: null,
+      updateNotes: _updateNotesController.text,
+      updatedAt: DateTime.now(),
+    );
+
+    await _saveChanges(updatedProject);
+    setState(() => _endDate = null);
+  }
+
+  Future<void> _saveChanges(Project updatedProject) async {
+    try {
+      await context.read<ProjectService>().updateProject(updatedProject);
+      setState(() {
+        _project = updatedProject;  // 업데이트된 프로젝트로 바로 상태 업데이트
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('변경사항이 저장되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 실패: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _refreshProject() async {
+    try {
+      final refreshedProject = await context.read<ProjectService>().getProject(_project.id);
+      if (mounted && refreshedProject != null) {
+        setState(() {
+          _project = refreshedProject;
+          _descriptionController.text = refreshedProject.description;
+          _procedureController.text = refreshedProject.procedure;
+          _updateNotesController.text = refreshedProject.updateNotes ?? '';
+          _status = refreshedProject.status;
+          _startDate = refreshedProject.startDate;
+          _endDate = refreshedProject.endDate;
+        });
+      }
+    } catch (e) {
+      print('프로젝트 새로고침 실패: $e');
+      // 실패해도 기존 상태 유지
+    }
+  }
+
+  // 달력 위젯 수정
+  Widget _buildCalendarWidget(DateTime? date, String label, {bool isStartDate = false}) {
+    return Expanded(
+      child: CalendarWidget(
+        selectedDate: date,
+        firstDate: isStartDate ? DateTime(2020) : _startDate,
+        lastDate: DateTime(2030),
+        label: label,
+        isStartDate: isStartDate,
+        onDateChanged: (DateTime newDate) {
+          if (isStartDate) {
+            if (newDate != _startDate) {
+              final oldDate = _formatDate(_startDate);
+              setState(() => _startDate = newDate);
+              _addUpdateNote('시작일 $oldDate → ${_formatDate(newDate)} 변경');
+              _updateImmediately(_project.copyWith(
+                startDate: newDate,
+                updateNotes: _updateNotesController.text,
+                updatedAt: DateTime.now(),
+              ));
+            }
+          } else {
+            if (newDate != _endDate) {
+              final oldDate = _endDate != null ? _formatDate(_endDate!) : '미정';
+              setState(() => _endDate = newDate);
+              _addUpdateNote('종료일 $oldDate → ${_formatDate(newDate)} 변경');
+              _updateImmediately(_project.copyWith(
+                endDate: newDate,
+                updateNotes: _updateNotesController.text,
+                updatedAt: DateTime.now(),
+              ));
+            }
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_project.name),
+        title: Text(
+          _project.name,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           TextButton.icon(
             icon: Icon(_isEditing ? Icons.save : Icons.edit),
@@ -186,59 +336,142 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         SizedBox(width: 80, child: Text('상태', style: TextStyle(fontWeight: FontWeight.bold))),
                         Expanded(
                           child: _isEditing
-                              ? DropdownButton<String>(
-                                  value: _status,
-                                  items: ['진행중', '완료', '보류'].map((String value) {
-                                    return DropdownMenuItem<String>(value: value, child: Text(value));
-                                  }).toList(),
-                                  onChanged: (String? newValue) {
-                                    if (newValue != null && newValue != _status) {
-                                      final oldStatus = _status;
-                                      setState(() => _status = newValue);
-                                      _addUpdateNote('상태 $oldStatus → $newValue 변경');
-                                      _updateImmediately(_project.copyWith(
-                                        status: newValue,
-                                        updateNotes: _updateNotesController.text,
-                                        updatedAt: DateTime.now(),
-                                      ));
-                                    }
-                                  },
+                              ? Row(
+                                  children: [
+                                    for (final status in ['진행중', '완료', '보류'])
+                                      Padding(
+                                        padding: EdgeInsets.only(right: 12),
+                                        child: InkWell(
+                                          onTap: () {
+                                            if (status != _status) {
+                                              final oldStatus = _status;
+                                              setState(() => _status = status);
+                                              _addUpdateNote('상태 $oldStatus → $status 변경');
+                                              _updateImmediately(_project.copyWith(
+                                                status: status,
+                                                updateNotes: _updateNotesController.text,
+                                                updatedAt: DateTime.now(),
+                                              ));
+                                            }
+                                          },
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                statusIcons[status],
+                                                color: _status == status 
+                                                    ? statusColors[status] 
+                                                    : Colors.grey,
+                                                size: 16,
+                                              ),
+                                              SizedBox(width: 2),
+                                              Text(
+                                                status,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: _status == status 
+                                                      ? statusColors[status] 
+                                                      : Colors.grey,
+                                                  fontWeight: _status == status 
+                                                      ? FontWeight.bold 
+                                                      : FontWeight.normal,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 )
-                              : Text(_status),
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      statusIcons[_status],
+                                      color: statusColors[_status],
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 2),
+                                    Text(
+                                      _status,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: statusColors[_status],
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ],
                     ),
-                    // 시작일
-                    Row(
-                      children: [
-                        SizedBox(width: 80, child: Text('시작일', style: TextStyle(fontWeight: FontWeight.bold))),
-                        Expanded(
-                          child: _isEditing
-                              ? TextButton(
-                                  onPressed: () async {
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      initialDate: _startDate,
+                    if (_isEditing) ...[
+                      SizedBox(height: 16),
+                      // 달력 패널
+                      SizedBox(
+                        height: 320,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: IntrinsicWidth(
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 240,
+                                    child: CalendarWidget(
+                                      selectedDate: _startDate,
                                       firstDate: DateTime(2020),
                                       lastDate: DateTime(2030),
-                                    );
-                                    if (picked != null && picked != _startDate) {
-                                      final oldDate = _formatDate(_startDate);
-                                      setState(() => _startDate = picked);
-                                      _addUpdateNote('시작일 $oldDate → ${_formatDate(picked)} 변경');
-                                      _updateImmediately(_project.copyWith(
-                                        startDate: picked,
-                                        updateNotes: _updateNotesController.text,
-                                        updatedAt: DateTime.now(),
-                                      ));
-                                    }
-                                  },
-                                  child: Text(_formatDate(_startDate), style: TextStyle(color: Colors.blue)),
-                                )
-                              : Text(_formatDate(_project.startDate)),
+                                      label: '시작일',
+                                      isStartDate: true,
+                                      onDateChanged: (DateTime newDate) {
+                                        if (newDate != _startDate) {
+                                          final oldDate = _formatDate(_startDate);
+                                          setState(() => _startDate = newDate);
+                                          _addUpdateNote('시작일 $oldDate → ${_formatDate(newDate)} 변경');
+                                          _updateImmediately(_project.copyWith(
+                                            startDate: newDate,
+                                            updateNotes: _updateNotesController.text,
+                                            updatedAt: DateTime.now(),
+                                          ));
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 240,
+                                    child: CalendarWidget(
+                                      selectedDate: _endDate,
+                                      firstDate: _startDate,
+                                      lastDate: DateTime(2030),
+                                      label: '종료일',
+                                      onDateChanged: (DateTime newDate) {
+                                        if (newDate != _endDate) {
+                                          final oldDate = _endDate != null ? _formatDate(_endDate!) : '미정';
+                                          setState(() => _endDate = newDate);
+                                          _addUpdateNote('종료일 $oldDate → ${_formatDate(newDate)} 변경');
+                                          _updateImmediately(_project.copyWith(
+                                            endDate: newDate,
+                                            updateNotes: _updateNotesController.text,
+                                            updatedAt: DateTime.now(),
+                                          ));
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ] else ...[
+                      // 읽기 전용 모드에서는 텍스트로 표시
+                      InfoRow(label: '시작일', value: _formatDate(_startDate)),
+                      InfoRow(label: '종료일', value: _endDate != null ? _formatDate(_endDate!) : '미정'),
+                    ],
                   ],
                 ),
               ),
