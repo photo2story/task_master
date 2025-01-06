@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/csv_service.dart';
 import '../models/task_template.dart';
+import '../models/project.dart';
 import 'project_create_screen.dart';
+import 'project_detail_screen.dart';
 
 class TaskTemplateScreen extends StatefulWidget {
   @override

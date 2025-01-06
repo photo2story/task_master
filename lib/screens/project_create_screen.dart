@@ -6,11 +6,17 @@ import '../models/task_template.dart';
 import '../services/project_service.dart';
 import '../services/database_service.dart';
 import '../services/csv_service.dart';
+import 'project_detail_screen.dart';
 
 class ProjectCreateScreen extends StatefulWidget {
-  final TaskTemplate? template;  // 선택된 템플릿
+  final TaskTemplate? template;
+  final Project? existingProject;
 
-  const ProjectCreateScreen({Key? key, this.template}) : super(key: key);
+  const ProjectCreateScreen({
+    Key? key, 
+    this.template,
+    this.existingProject,
+  }) : super(key: key);
 
   @override
   _ProjectCreateScreenState createState() => _ProjectCreateScreenState();
@@ -32,7 +38,7 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
   int _durationInDays = 7;
   String _status = '진행중';
 
-  TaskTemplate? _selectedTemplate;  // 선택된 템플릿 저장
+  TaskTemplate? _selectedTemplate;
 
   @override
   void initState() {
@@ -52,13 +58,12 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
     _csvService = Provider.of<CsvService>(context);
   }
 
-  // CSV에서 템플릿 로드
   Future<void> _loadTemplate() async {
     try {
       final templates = await _csvService.loadTaskTemplates();
       if (templates.isNotEmpty) {
         setState(() {
-          _selectedTemplate = templates.first;  // 기본값으로 첫 번째 템플릿 사용
+          _selectedTemplate = templates.first;
           _updateFromTemplate();
         });
       }
@@ -67,7 +72,6 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
     }
   }
 
-  // 템플릿에서 값 업데이트
   void _updateFromTemplate() {
     if (_selectedTemplate != null) {
       setState(() {
@@ -82,7 +86,6 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
     }
   }
 
-  // 종료일 업데이트 메서드 추가
   void _updateEndDate() {
     setState(() {
       _endDate = _startDate.add(Duration(days: _durationInDays));
@@ -96,11 +99,46 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
         title: Text('새 프로젝트'),
         actions: [
           ElevatedButton.icon(
+            icon: Icon(Icons.edit),
+            label: Text('수정'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+            ),
+            onPressed: () {
+              final projectToEdit = Project(
+                id: const Uuid().v4(),
+                name: _generateProjectName(),
+                category: _selectedCategory,
+                subCategory: _selectedSubCategory,
+                detail: _detail,
+                description: _description,
+                manager: _manager,
+                supervisor: _supervisor,
+                procedure: _procedure,
+                startDate: _startDate,
+                status: _status,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProjectDetailScreen(project: projectToEdit),
+                ),
+              );
+            },
+          ),
+          SizedBox(width: 8),
+          ElevatedButton.icon(
             icon: Icon(Icons.save),
             label: Text('등록'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
               foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 16),
             ),
             onPressed: () => _createProject(context),
           ),
@@ -114,7 +152,6 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 프로젝트 정보 카드 (템플릿 기반 정보)
               Card(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
@@ -140,7 +177,6 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
               ),
               SizedBox(height: 16),
 
-              // 일정 관리 카드 (수정 가능)
               Card(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
@@ -196,19 +232,20 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
     );
   }
 
+  String _generateProjectName() {
+    return '${_startDate.year}'
+        '${_startDate.month.toString().padLeft(2, '0')}'
+        '${_startDate.day.toString().padLeft(2, '0')}'
+        '_${_selectedCategory}'
+        '_${_selectedSubCategory}'
+        '_${_detail}';
+  }
+
   void _createProject(BuildContext context) async {
     if (_formKey.currentState?.validate() == true) {
-      // 프로젝트명 생성: YYYYMMDD_구분_분류_상세
-      final projectName = '${_startDate.year}'
-          '${_startDate.month.toString().padLeft(2, '0')}'
-          '${_startDate.day.toString().padLeft(2, '0')}'
-          '_${_selectedCategory}'
-          '_${_selectedSubCategory}'
-          '_${_detail}';
-
       final project = Project(
-        id: const Uuid().v4(),
-        name: projectName,
+        id: widget.existingProject?.id ?? const Uuid().v4(),
+        name: _generateProjectName(),
         category: _selectedCategory,
         subCategory: _selectedSubCategory,
         detail: _detail,
@@ -218,17 +255,21 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
         procedure: _procedure,
         startDate: _startDate,
         status: _status,
-        createdAt: DateTime.now(),
+        createdAt: widget.existingProject?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
-        updateNotes: '',
+        updateNotes: widget.existingProject != null ? '프로젝트 수정' : null,
       );
 
       try {
-        await context.read<ProjectService>().createProject(project);
+        if (widget.existingProject != null) {
+          await context.read<ProjectService>().updateProject(project);
+        } else {
+          await context.read<ProjectService>().createProject(project);
+        }
         Navigator.pop(context);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('프로젝트 생성 실패: $e')),
+          SnackBar(content: Text('프로젝트 ${widget.existingProject != null ? "수정" : "생성"} 실패: $e')),
         );
       }
     }
