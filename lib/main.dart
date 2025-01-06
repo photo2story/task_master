@@ -15,8 +15,15 @@ import 'screens/user_login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
   
+  // 웹과 네이티브 모두에서 작동하도록 수정
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print('환경 변수 로드 실패: $e');
+    // 기본값 설정 또는 에러 처리
+  }
+
   // 가로 모드 활성화
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,

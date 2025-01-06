@@ -1,28 +1,29 @@
-import 'package:csv/csv.dart';
 import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:csv/csv.dart';
+import 'user_service.dart';
 import '../models/task_template.dart';
 import '../models/project.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform, File, Directory;
-import 'user_service.dart';
 
 class CsvService {
-  final String taskListUrl = 'https://raw.githubusercontent.com/photo2story/task_master/main/assets/task_list.csv';
-  final String baseProjectListUrl = 'https://raw.githubusercontent.com/photo2story/task_master/main/assets/project_list.csv';
-  final String githubToken = const String.fromEnvironment('GITHUB_TOKEN', defaultValue: '');
-  final String owner = 'photo2story';
-  final String repo = 'task_master';
-  String _localDir;
+  final String taskListUrl = dotenv.env['TASK_LIST_URL'] ?? 'assets/task_list.csv';
+  final String baseProjectListUrl = dotenv.env['PROJECT_LIST_URL'] ?? 'assets/project_list.csv';
+  final String githubToken = dotenv.env['GITHUB_TOKEN'] ?? '';
+  final String owner = dotenv.env['GITHUB_REPO_OWNER'] ?? 'photo2story';
+  final String repo = dotenv.env['GITHUB_REPO_NAME'] ?? 'task_master';
+  String _localDir = '';
   final UserService _userService;
 
-  CsvService(this._userService) : _localDir = '';
+  CsvService(this._userService);
 
   Future<void> initialize() async {
-    final directory = await getApplicationDocumentsDirectory();
-    _localDir = directory.path;
+    _localDir = kIsWeb ? '/temp' : (await getApplicationDocumentsDirectory()).path;
     print('로컬 저장소 경로: $_localDir');
   }
 
@@ -31,69 +32,55 @@ class CsvService {
     return userName != null ? 'project_list_$userName.csv' : 'project_list.csv';
   }
 
-  String get _localProjectFilePath => '$_localDir/$_projectFileName';
+  String get _localProjectFilePath {
+    if (kIsWeb) {
+      return _projectFileName;
+    }
+    return '$_localDir/$_projectFileName';
+  }
 
-  // 기존 loadTaskTemplates() 메서드는 유지...
-
-  // 업무 템플릿 로드 메서드 복원
   Future<List<TaskTemplate>> loadTaskTemplates() async {
     try {
-      print('\nCSV 파일 로드 시도:');
-      print('URL: $taskListUrl');
+      String csvData;
       
-      final response = await http.get(Uri.parse(taskListUrl));
-      
-      print('서버 응답: ${response.statusCode}');
-      if (response.statusCode == 200) {
-        final rawData = response.body;
-        
-        final csvConverter = CsvToListConverter(
-          shouldParseNumbers: false,
-          fieldDelimiter: ',',
-          eol: '\n',
-          textDelimiter: '"',
-          textEndDelimiter: '"',
-          allowInvalid: false,
-        );
-        
-        final List<List<dynamic>> csvTable = csvConverter.convert(rawData);
-        
-        print('CSV 행 수: ${csvTable.length}');
-        if (csvTable.isNotEmpty) {
-          print('헤더: ${csvTable[0]}');
-          print('첫 번째 데이터 행: ${csvTable.length > 1 ? csvTable[1] : "없음"}');
-        }
-
-        return csvTable.skip(1).map((row) {
-          try {
-            final cleanRow = row.map((field) {
-              if (field == null) return '';
-              return field.toString()
-                  .trim()
-                  .replaceAll(RegExp(r'^"|"$'), '')
-                  .replaceAll('""', '"');
-            }).toList();
-
-            return TaskTemplate(
-              category: cleanRow[0],
-              subCategory: cleanRow[1],
-              detail: cleanRow[2],
-              description: cleanRow[3],
-              manager: cleanRow[4],
-              supervisor: cleanRow[5],
-              procedure: cleanRow[6],
-            );
-          } catch (e) {
-            print('행 변환 에러: $row');
-            print('에러 내용: $e');
-            rethrow;
-          }
-        }).toList();
+      if (kIsWeb) {
+        csvData = await rootBundle.loadString('assets/task_list.csv');
       } else {
-        throw Exception('CSV 파일 로드 실패: ${response.statusCode}');
+        final response = await http.get(Uri.parse(taskListUrl));
+        if (response.statusCode != 200) {
+          throw Exception('CSV 파일 로드 실패: ${response.statusCode}');
+        }
+        csvData = utf8.decode(response.bodyBytes);
       }
+
+      final List<List<dynamic>> rowsAsListOfValues = 
+          const CsvToListConverter().convert(csvData, eol: '\n');
+
+      if (rowsAsListOfValues.isEmpty) {
+        throw Exception('CSV 파일이 비어있습니다');
+      }
+
+      // 헤더 제거
+      rowsAsListOfValues.removeAt(0);
+
+      return rowsAsListOfValues.map((row) {
+        if (row.length < 7) {
+          throw Exception('잘못된 CSV 형식: ${row.toString()}');
+        }
+        
+        return TaskTemplate(
+          category: row[0].toString(),
+          subCategory: row[1].toString(),
+          detail: row[2].toString(),
+          description: row[3].toString(),
+          manager: row[4].toString(),
+          supervisor: row[5].toString(),
+          procedure: row[6].toString(),
+        );
+      }).toList();
+
     } catch (e) {
-      print('CSV 파일 로드 에러: $e');
+      print('템플릿 로드 에러: $e');
       rethrow;
     }
   }

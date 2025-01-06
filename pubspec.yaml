@@ -102,5 +102,5 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
   assets:
-    - assets/task_list.csv
     - .env
+    - assets/task_list.csv
