@@ -93,12 +93,13 @@ class Project {
       return (value?.toString() ?? '').trim();
     }
 
-    DateTime parseDate(String value) {
+    DateTime? parseDate(String value) {
+      if (value.isEmpty) return null;
       try {
         return DateTime.parse(value.trim());
       } catch (e) {
         print('날짜 파싱 오류: $value');
-        return DateTime.now();
+        return null;
       }
     }
 
@@ -110,13 +111,14 @@ class Project {
       description: sanitize(row[4]),
       detail: sanitize(row[5]),
       procedure: sanitize(row[6]),
-      startDate: parseDate(sanitize(row[7])),
-      status: sanitize(row[8]),
-      manager: sanitize(row[9]),
-      supervisor: sanitize(row[10]),
-      createdAt: parseDate(sanitize(row[11])),
-      updatedAt: parseDate(sanitize(row[12])),
-      updateNotes: row.length > 13 ? sanitize(row[13]) : null,
+      startDate: parseDate(sanitize(row[7])) ?? DateTime.now(),
+      endDate: parseDate(sanitize(row[8])),
+      status: sanitize(row[9]),
+      manager: sanitize(row[10]),
+      supervisor: sanitize(row[11]),
+      createdAt: parseDate(sanitize(row[12])) ?? DateTime.now(),
+      updatedAt: parseDate(sanitize(row[13])) ?? DateTime.now(),
+      updateNotes: row.length > 14 ? sanitize(row[14]) : null,
     );
   }
 
@@ -130,6 +132,7 @@ class Project {
       detail,
       procedure,
       startDate.toIso8601String(),
+      endDate?.toIso8601String() ?? '',
       status,
       manager,
       supervisor,
@@ -137,5 +140,26 @@ class Project {
       updatedAt.toIso8601String(),
       updateNotes ?? '',
     ];
+  }
+
+  static int compareProjects(Project a, Project b) {
+    int startDateCompare = b.startDate.compareTo(a.startDate);
+    if (startDateCompare != 0) return startDateCompare;
+    
+    if (a.endDate == null && b.endDate != null) return -1;
+    if (a.endDate != null && b.endDate == null) return 1;
+    if (a.endDate != null && b.endDate != null) {
+      int endDateCompare = b.endDate!.compareTo(a.endDate!);
+      if (endDateCompare != 0) return endDateCompare;
+    }
+    
+    Map<String, int> statusPriority = {
+      '진행중': 0,
+      '보류': 1,
+      '완료': 2,
+    };
+    int statusA = statusPriority[a.status] ?? 3;
+    int statusB = statusPriority[b.status] ?? 3;
+    return statusA.compareTo(statusB);
   }
 } 

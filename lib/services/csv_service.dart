@@ -54,64 +54,88 @@ class CsvService {
   // 업무 템플릿 로드
   Future<List<TaskTemplate>> loadTaskTemplates() async {
     try {
-      print('업무목록을 원격 저장소에서 로드 시도...');
-      final response = await http.get(Uri.parse(taskListUrl));
+      String csvData;
       
-      if (response.statusCode == 200) {
-        final csvData = utf8.decode(response.bodyBytes);
-        print('업무목록 원격 로드 성공: ${csvData.length} bytes');
-        
-        // 디버깅을 위해 CSV 데이터의 처음 부분만 출력
-        final previewLength = min(200, csvData.length);
-        print('CSV 데이터 미리보기: ${csvData.substring(0, previewLength)}...');
-        
-        final List<List<dynamic>> rows = const CsvToListConverter(
-          shouldParseNumbers: false,
-          allowInvalid: true,
-          fieldDelimiter: ',',
-          eol: '\n',
-        ).convert(csvData);
-        
-        if (rows.isEmpty) {
-          print('CSV 파일이 비어있습니다');
-          return [];
-        }
-        
-        print('총 ${rows.length}개의 행이 로드됨');
-        if (rows.isNotEmpty) {
-          print('헤더: ${rows[0].join(", ")}');
-        }
-        
-        // 헤더 검증
-        if (rows[0].length < 7) {
-          print('잘못된 CSV 형식: 헤더 열이 부족합니다 (${rows[0].length} columns)');
-          return [];
-        }
-        
-        rows.removeAt(0); // 헤더 제거
-        
-        return rows.where((row) => row.length >= 7).map((row) {
-          try {
-            return TaskTemplate(
-              category: row[0].toString().trim(),
-              subCategory: row[1].toString().trim(),
-              detail: row[2].toString().trim(),
-              description: row[3].toString().trim(),
-              manager: row[4].toString().trim(),
-              supervisor: row[5].toString().trim(),
-              procedure: row[6].toString().trim(),
-            );
-          } catch (e) {
-            print('행 변환 에러: ${row.join(", ")}');
-            print('에러 내용: $e');
-            return null;
-          }
-        }).whereType<TaskTemplate>().toList();
+      // 1. 먼저 로컬에서 시도
+      if (kIsWeb) {
+        // 웹의 경우 SharedPreferences 사용
+        csvData = _prefs.getString('tasks_cache') ?? '';
       } else {
-        print('업무목록 로드 실패 (상태 코드: ${response.statusCode})');
-        print('응답 내용: ${response.body}');
+        // 네이티브 앱의 경우 파일 시스템 사용
+        final file = await _getLocalFile('task_list.csv');
+        if (await file.exists()) {
+          csvData = await file.readAsString();
+        } else {
+          csvData = '';
+        }
+      }
+
+      // 2. 로컬에 없으면 원격에서 가져오기
+      if (csvData.isEmpty) {
+        print('업무목록을 원격 저장소에서 로드 시도...');
+        final response = await http.get(Uri.parse(taskListUrl));
+        
+        if (response.statusCode == 200) {
+          csvData = utf8.decode(response.bodyBytes);
+          print('업무목록 원격 로드 성공: ${csvData.length} bytes');
+          
+          // 로컬에 저장
+          if (kIsWeb) {
+            await _prefs.setString('tasks_cache', csvData);
+          } else {
+            final file = await _getLocalFile('task_list.csv');
+            await file.writeAsString(csvData);
+          }
+        } else {
+          print('업무목록 로드 실패 (상태 코드: ${response.statusCode})');
+          return [];
+        }
+      }
+
+      // 3. CSV 파싱 및 TaskTemplate 생성
+      final List<List<dynamic>> rows = const CsvToListConverter(
+        shouldParseNumbers: false,
+        allowInvalid: true,
+        fieldDelimiter: ',',
+        eol: '\n',
+      ).convert(csvData);
+      
+      if (rows.isEmpty) {
+        print('CSV 파일이 비어있습니다');
         return [];
       }
+      
+      print('총 ${rows.length}개의 행이 로드됨');
+      if (rows.isNotEmpty) {
+        print('헤더: ${rows[0].join(", ")}');
+      }
+      
+      // 헤더 검증
+      if (rows[0].length < 7) {
+        print('잘못된 CSV 형식: 헤더 열이 부족합니다 (${rows[0].length} columns)');
+        return [];
+      }
+      
+      rows.removeAt(0); // 헤더 제거
+      
+      return rows.where((row) => row.length >= 7).map((row) {
+        try {
+          return TaskTemplate(
+            category: row[0].toString().trim(),
+            subCategory: row[1].toString().trim(),
+            detail: row[2].toString().trim(),
+            description: row[3].toString().trim(),
+            manager: row[4].toString().trim(),
+            supervisor: row[5].toString().trim(),
+            procedure: row[6].toString().trim(),
+          );
+        } catch (e) {
+          print('행 변환 에러: ${row.join(", ")}');
+          print('에러 내용: $e');
+          return null;
+        }
+      }).whereType<TaskTemplate>().toList();
+      
     } catch (e) {
       print('템플릿 로드 에러: $e');
       return [];
@@ -145,7 +169,12 @@ class CsvService {
       if (rows.isEmpty) return [];
       
       rows.removeAt(0); // 헤더 제거
-      return rows.map((row) => Project.fromCsv(row)).toList();
+      final projects = rows.map((row) => Project.fromCsv(row)).toList();
+      
+      // 프로젝트 정렬 적용
+      projects.sort(Project.compareProjects);
+      
+      return projects;
     } catch (e) {
       print('프로젝트 로드 에러: $e');
       return [];
