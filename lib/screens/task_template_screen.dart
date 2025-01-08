@@ -18,22 +18,25 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
   List<String> categories = [];
   Map<String, List<TaskTemplate>> templatesByCategory = {};
   bool isLoading = true;
+  bool _isInitialized = false;
   
-  // 검색을 위한 변수 추가
   final TextEditingController _searchController = TextEditingController();
   List<TaskTemplate> searchResults = [];
   bool isSearching = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _csvService = Provider.of<CsvService>(context);
-    _loadAllTemplates();
+  void initState() {
+    super.initState();
   }
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      _csvService = Provider.of<CsvService>(context);
+      _loadAllTemplates();
+      _isInitialized = true;
+    }
   }
 
   @override
@@ -42,7 +45,7 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
     super.dispose();
   }
 
-  // 검색 메서드 추가
+  // 검색 메서드 수정
   void _performSearch(String query) {
     if (query.isEmpty) {
       setState(() {
@@ -52,21 +55,50 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
       return;
     }
 
+    final searchQuery = query.toLowerCase();
+    final results = templatesByCategory.values
+        .expand((templates) => templates)
+        .where((template) {
+          return template.subCategory.toLowerCase().contains(searchQuery) ||
+                 template.detail.toLowerCase().contains(searchQuery) ||
+                 template.description.toLowerCase().contains(searchQuery) ||
+                 template.manager.toLowerCase().contains(searchQuery) ||
+                 template.supervisor.toLowerCase().contains(searchQuery) ||
+                 template.procedure.toLowerCase().contains(searchQuery);
+        })
+        .toList();
+
     setState(() {
       isSearching = true;
-      searchResults = templatesByCategory.values
-          .expand((templates) => templates)
-          .where((template) {
-            final searchQuery = query.toLowerCase();
-            return template.subCategory.toLowerCase().contains(searchQuery) ||   // 분류
-                   template.detail.toLowerCase().contains(searchQuery) ||        // 상세
-                   template.description.toLowerCase().contains(searchQuery) ||   // 업무내용
-                   template.manager.toLowerCase().contains(searchQuery) ||       // 담당
-                   template.supervisor.toLowerCase().contains(searchQuery) ||    // 관리
-                   template.procedure.toLowerCase().contains(searchQuery);       // 업무절차
-          })
-          .toList();
+      searchResults = results;
     });
+  }
+
+  // 검색 TextField 위젯
+  Widget _buildSearchField() {
+    return Padding(
+      padding: EdgeInsets.all(8),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _performSearch,
+        style: TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: '분류, 담당, 관리, 업무내용, 업무절차로 검색...',
+          hintStyle: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 13,
+          ),
+          prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+          filled: true,
+          fillColor: Color(0xFF2A2A2A),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+    );
   }
 
   // 모든 템플릿을 한 번에 로드하는 메서드
@@ -210,41 +242,13 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
               color: Colors.black,
               child: Column(
                 children: [
-                  // 검색 위젯 추가
-                  Padding(
-                    padding: EdgeInsets.all(8),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _performSearch,
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: '분류, 담당, 관리, 업무내용, 업무절차로 검색...',
-                        hintStyle: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 13,
-                        ),
-                        prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
-                        filled: true,
-                        fillColor: Color(0xFF2A2A2A),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    ),
-                  ),
+                  _buildSearchField(),
                   Expanded(
                     child: isLoading
                         ? Center(child: CircularProgressIndicator())
                         : isSearching
                             ? _buildSearchResults()
-                            : selectedCategory == null
-                                ? Center(child: Text(
-                                    '왼쪽에서 카테고리를 선택하세요',
-                                    style: TextStyle(color: Colors.grey[300]),
-                                  ))
-                                : _buildCategoryTemplates(),
+                            : _buildCategoryTemplates(),
                   ),
                 ],
               ),
